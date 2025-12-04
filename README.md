@@ -11,7 +11,6 @@ TIS cihazlarınızı yönetmek için web tabanlı arayüz. Home Assistant addon 
 - ✅ Modern ve kullanıcı dostu web arayüzü
 - ✅ Gerçek zamanlı cihaz kontrolü
 - ✅ SMARTCLOUD gateway desteği
-- ✅ Otomatik yenileme (30 saniyede bir)
 
 ## 📦 Kurulum
 
