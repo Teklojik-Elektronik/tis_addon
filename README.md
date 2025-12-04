@@ -56,10 +56,31 @@ log_level: info              # Log seviyesi
 
 ## 🎯 Kullanım
 
+### Addon Kurulumu (İlk Adım)
+
 1. Addon başlatıldıktan sonra **"Web kullanıcı arayüzünü aç"** butonuna tıklayın
 2. **Gateway IP** kutusuna TIS gateway adresinizi girin (veya Configuration'dan ayarlayın)
 3. **"Cihazları Tara"** butonuna basarak ağınızdaki TIS cihazlarını keşfedin
-4. Her cihaz için **"Aç"** veya **"Kapat"** butonlarını kullanın
+4. Her cihazın **"Ekle"** butonuna tıklayarak cihazı sisteme kaydedin
+
+### TIS Entegrasyonu Kurulumu (İkinci Adım)
+
+Addon ile eklediğiniz cihazları Home Assistant'ta görmek için **TIS Entegrasyonunu** kurmalısınız:
+
+1. **Settings → Devices & Services → Add Integration**
+2. **"TIS"** arayın ve entegrasyonu ekleyin
+3. Gateway IP ve UDP Port bilgilerini girin (addon ile aynı olmalı)
+4. Entegrasyon kurulduktan sonra eklediğiniz cihazlar **switch** olarak görünecek
+
+### Yeni Cihaz Ekleme
+
+Addon'dan yeni bir cihaz eklediğinizde:
+
+1. Web UI'dan **"Ekle"** butonuna tıklayın
+2. Settings → Integrations → **TIS** → **⋮ (üç nokta)** → **Reload** yapın
+3. Yeni cihazlar otomatik olarak entity listesine eklenecek
+
+> **Not:** Home Assistant restart'a gerek yok, sadece entegrasyonu reload etmek yeterli!
 
 ## 📱 Desteklenen Cihazlar
 
@@ -87,6 +108,13 @@ log_level: info              # Log seviyesi
 - Cihazların açık ve ağa bağlı olduğunu kontrol edin
 - Firewall ayarlarını kontrol edin (UDP port 6000)
 - Home Assistant ile gateway aynı ağda mı kontrol edin
+
+### Eklediğim cihazlar sensör olarak görünmüyor
+- **TIS Entegrasyonunu kurduğunuzdan emin olun** (Settings → Integrations → Add → TIS)
+- Yeni cihaz ekledikten sonra **TIS entegrasyonunu reload** edin:
+  - Settings → Integrations → TIS → ⋮ → Reload
+- Entegrasyon kurulmadan önce addon'dan eklediğiniz cihazlar:
+  - Entegrasyonu kurduktan sonra otomatik olarak yüklenecektir
 
 ### Web arayüzüne ulaşılamıyor
 - Addon'un çalıştığından emin olun (Yeşil durum göstergesi)

@@ -427,66 +427,45 @@ class TISWebUI:
             if not all([subnet, device_id, model_name]):
                 return web.json_response({'success': False, 'message': 'Eksik parametreler'}, status=400)
 
-            # Read Home Assistant access token
+            # Save device to JSON file for TIS integration to read
+            import json
+            
+            unique_id = f"tis_{subnet}_{device_id}"
+            
+            device_info = {
+                'subnet': subnet,
+                'device_id': device_id,
+                'model_name': model_name,
+                'channels': channels,
+                'name': device_name or f"{model_name} ({subnet}.{device_id})"
+            }
+            
+            # Save to /data/tis_devices.json (TIS integration reads from here)
+            devices_file = '/data/tis_devices.json'
+            devices = {}
             try:
-                with open('/data/options.json', 'r') as f:
-                    import json
-                    options = json.load(f)
-                
-                # Get supervisor token
-                supervisor_token = os.environ.get('SUPERVISOR_TOKEN')
-                if not supervisor_token:
-                    return web.json_response({
-                        'success': False, 
-                        'message': 'Home Assistant API erişimi yok'
-                    }, status=500)
-
-                # Create entity via MQTT or direct API
-                # For now, we'll create a helper via API
-                import aiohttp
-                
-                unique_id = f"tis_{subnet}_{device_id}"
-                entity_id = f"switch.tis_{subnet}_{device_id}"
-                
-                # Store device info in addon data
-                device_info = {
-                    'subnet': subnet,
-                    'device_id': device_id,
-                    'model_name': model_name,
-                    'channels': channels,
-                    'name': device_name or f"{model_name} ({subnet}.{device_id})"
-                }
-                
-                # Save to persistent storage
-                devices_file = '/data/devices.json'
-                devices = {}
-                try:
-                    with open(devices_file, 'r') as f:
-                        devices = json.load(f)
-                except:
-                    pass
-                
-                devices[unique_id] = device_info
-                
-                with open(devices_file, 'w') as f:
-                    json.dump(devices, f, indent=2)
-                
-                return web.json_response({
-                    'success': True,
-                    'message': f'Cihaz kaydedildi: {device_name}',
-                    'entity_id': entity_id
-                })
-                
+                with open(devices_file, 'r') as f:
+                    devices = json.load(f)
+            except FileNotFoundError:
+                _LOGGER.info("Creating new tis_devices.json file")
             except Exception as e:
-                _LOGGER.error(f"Error saving device: {e}")
-                return web.json_response({
-                    'success': False,
-                    'message': f'Cihaz kaydedilemedi: {str(e)}'
-                }, status=500)
+                _LOGGER.warning(f"Could not read existing devices: {e}")
+            
+            devices[unique_id] = device_info
+            
+            with open(devices_file, 'w') as f:
+                json.dump(devices, f, indent=2)
+            
+            _LOGGER.info(f"Device saved to JSON: {unique_id} - {device_name}")
+            
+            return web.json_response({
+                'success': True,
+                'message': f'✅ Cihaz eklendi: {device_name}\n\n⚠️ Sensörleri görmek için TIS entegrasyonunu yeniden yükleyin:\nSettings → Integrations → TIS → ⋮ → Reload'
+            })
                 
         except Exception as e:
             _LOGGER.error(f"Add device error: {e}")
-            return web.json_response({'success': False, 'message': str(e)}, status=500)
+            return web.json_response({'success': False, 'message': f'❌ Hata: {str(e)}'}, status=500)
 
 
 async def main():
