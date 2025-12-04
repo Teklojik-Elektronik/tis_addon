@@ -4,23 +4,21 @@ FROM $BUILD_FROM
 # Install Python and dependencies
 RUN apk add --no-cache \
     python3 \
-    py3-pip \
-    python3-dev \
-    gcc \
-    musl-dev
+    py3-pip
 
-# Copy requirements
-COPY requirements.txt /tmp/
-RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
+# Set working directory
+WORKDIR /app
 
-# Copy addon files
+# Copy requirements and install
+COPY requirements.txt .
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+# Copy application files
+COPY web_ui.py .
+COPY discovery.py .
+COPY const.py .
+COPY tis_protocol.py .
 COPY run.sh /
-COPY web_ui.py /
-COPY discovery.py /
-COPY const.py /
-COPY tis_protocol.py /
-COPY templates/ /templates/
-COPY static/ /static/
 
 RUN chmod a+x /run.sh
 
