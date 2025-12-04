@@ -458,14 +458,76 @@ class TISWebUI:
             
             _LOGGER.info(f"Device saved to JSON: {unique_id} - {device_name}")
             
-            return web.json_response({
-                'success': True,
-                'message': f'✅ Cihaz eklendi: {device_name}\n\n⚠️ Sensörleri görmek için TIS entegrasyonunu yeniden yükleyin:\nSettings → Integrations → TIS → ⋮ → Reload'
-            })
+            # Try to reload TIS integration automatically
+            reload_success = await self._reload_tis_integration()
+            
+            if reload_success:
+                return web.json_response({
+                    'success': True,
+                    'message': f'✅ Cihaz eklendi: {device_name}\n\n🔄 TIS entegrasyonu otomatik olarak yenilendi!\nSensörler şimdi kullanıma hazır.'
+                })
+            else:
+                return web.json_response({
+                    'success': True,
+                    'message': f'✅ Cihaz eklendi: {device_name}\n\n⚠️ Sensörleri görmek için TIS entegrasyonunu manuel yenileyin:\nSettings → Integrations → TIS → ⋮ → Reload'
+                })
                 
         except Exception as e:
             _LOGGER.error(f"Add device error: {e}")
             return web.json_response({'success': False, 'message': f'❌ Hata: {str(e)}'}, status=500)
+    
+    async def _reload_tis_integration(self):
+        """Reload TIS integration via Home Assistant API."""
+        try:
+            import aiohttp
+            
+            # Get supervisor token
+            supervisor_token = os.environ.get('SUPERVISOR_TOKEN')
+            if not supervisor_token:
+                _LOGGER.warning("No SUPERVISOR_TOKEN, cannot auto-reload integration")
+                return False
+            
+            # Call Home Assistant API to reload config entry
+            url = "http://supervisor/core/api/config/config_entries/entry"
+            headers = {
+                "Authorization": f"Bearer {supervisor_token}",
+                "Content-Type": "application/json"
+            }
+            
+            async with aiohttp.ClientSession() as session:
+                # First, get all config entries to find TIS entry
+                list_url = "http://supervisor/core/api/config/config_entries/entry"
+                async with session.get(list_url, headers=headers) as resp:
+                    if resp.status == 200:
+                        entries = await resp.json()
+                        
+                        # Find TIS integration entry
+                        tis_entry_id = None
+                        for entry in entries:
+                            if entry.get('domain') == 'tis':
+                                tis_entry_id = entry.get('entry_id')
+                                break
+                        
+                        if not tis_entry_id:
+                            _LOGGER.warning("TIS integration not found in config entries")
+                            return False
+                        
+                        # Reload the specific entry
+                        reload_url = f"http://supervisor/core/api/config/config_entries/entry/{tis_entry_id}/reload"
+                        async with session.post(reload_url, headers=headers) as reload_resp:
+                            if reload_resp.status == 200:
+                                _LOGGER.info("TIS integration reloaded successfully")
+                                return True
+                            else:
+                                _LOGGER.warning(f"Failed to reload TIS integration: {reload_resp.status}")
+                                return False
+                    else:
+                        _LOGGER.warning(f"Failed to get config entries: {resp.status}")
+                        return False
+                        
+        except Exception as e:
+            _LOGGER.error(f"Error reloading TIS integration: {e}")
+            return False
 
 
 async def main():
