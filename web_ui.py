@@ -438,11 +438,12 @@ class TISWebUI:
         devices_list = []
         for device in devices.values():
             subnet = device.get('subnet')
-            device_id = device.get('device_id')
+            device_id = device.get('device')  # Discovery returns 'device', not 'device_id'
             unique_id = f"tis_{subnet}_{device_id}"
             
             # Add 'is_added' flag
             device['is_added'] = unique_id in added_devices
+            _LOGGER.debug(f"Device {unique_id}: is_added={device['is_added']}")
             devices_list.append(device)
         
         return web.json_response(devices_list)
