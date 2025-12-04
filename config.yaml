@@ -24,5 +24,4 @@ schema:
   gateway_ip: str
   udp_port: int
   log_level: list(debug|info|warning|error)
-image: "ghcr.io/{arch}-addon-tis-control"
-url: "https://github.com/yourusername/tis-homeassistant-addon"
+url: "https://github.com/Teklojik-Elektronik/tis_addon"
