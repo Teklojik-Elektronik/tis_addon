@@ -18,6 +18,13 @@ echo "[INFO] Starting TIS Control Web UI..."
 echo "[INFO] Gateway IP: ${GATEWAY_IP}"
 echo "[INFO] UDP Port: ${UDP_PORT}"
 
+# Check for Supervisor token
+if [ -n "$SUPERVISOR_TOKEN" ]; then
+    echo "[INFO] Supervisor token detected - Auto-reload enabled"
+else
+    echo "[WARNING] No supervisor token - Auto-reload disabled"
+fi
+
 # Change to app directory
 cd /app
 
