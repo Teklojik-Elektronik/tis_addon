@@ -1,10 +1,12 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
-# Install Python and dependencies
+# Install Python, jq and dependencies
 RUN apk add --no-cache \
     python3 \
-    py3-pip
+    py3-pip \
+    jq \
+    bash
 
 # Set working directory
 WORKDIR /app

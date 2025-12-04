@@ -1,12 +1,15 @@
-#!/usr/bin/env bashio
+#!/usr/bin/env bash
+set -e
 
-# Get configuration from Home Assistant
-GATEWAY_IP=$(bashio::config 'gateway_ip')
-UDP_PORT=$(bashio::config 'udp_port')
+CONFIG_PATH=/data/options.json
 
-bashio::log.info "Starting TIS Control Web UI..."
-bashio::log.info "Gateway IP: ${GATEWAY_IP}"
-bashio::log.info "UDP Port: ${UDP_PORT}"
+# Read configuration from options.json
+GATEWAY_IP=$(jq --raw-output '.gateway_ip // "192.168.1.200"' $CONFIG_PATH)
+UDP_PORT=$(jq --raw-output '.udp_port // "6000"' $CONFIG_PATH)
+
+echo "[INFO] Starting TIS Control Web UI..."
+echo "[INFO] Gateway IP: ${GATEWAY_IP}"
+echo "[INFO] UDP Port: ${UDP_PORT}"
 
 # Change to app directory
 cd /app
