@@ -477,9 +477,10 @@ class TISWebUI:
             return web.json_response({'success': False, 'message': f'❌ Hata: {str(e)}'}, status=500)
     
     async def _reload_tis_integration(self):
-        """Reload TIS integration via Home Assistant API."""
+        """Reload TIS integration via Home Assistant WebSocket API."""
         try:
             import aiohttp
+            import asyncio
             
             # Get supervisor token
             supervisor_token = os.environ.get('SUPERVISOR_TOKEN')
@@ -487,8 +488,8 @@ class TISWebUI:
                 _LOGGER.warning("No SUPERVISOR_TOKEN, cannot auto-reload integration")
                 return False
             
-            # Call Home Assistant API to reload config entry
-            url = "http://supervisor/core/api/config/config_entries/entry"
+            # Use Home Assistant REST API
+            base_url = "http://supervisor/core/api"
             headers = {
                 "Authorization": f"Bearer {supervisor_token}",
                 "Content-Type": "application/json"
@@ -496,37 +497,48 @@ class TISWebUI:
             
             async with aiohttp.ClientSession() as session:
                 # First, get all config entries to find TIS entry
-                list_url = "http://supervisor/core/api/config/config_entries/entry"
+                list_url = f"{base_url}/config/config_entries/entry"
+                
+                _LOGGER.info("Getting config entries from Home Assistant...")
                 async with session.get(list_url, headers=headers) as resp:
-                    if resp.status == 200:
-                        entries = await resp.json()
-                        
-                        # Find TIS integration entry
-                        tis_entry_id = None
-                        for entry in entries:
-                            if entry.get('domain') == 'tis':
-                                tis_entry_id = entry.get('entry_id')
-                                break
-                        
-                        if not tis_entry_id:
-                            _LOGGER.warning("TIS integration not found in config entries")
+                    if resp.status != 200:
+                        _LOGGER.error(f"Failed to get config entries: HTTP {resp.status}")
+                        text = await resp.text()
+                        _LOGGER.error(f"Response: {text}")
+                        return False
+                    
+                    data = await resp.json()
+                    entries = data if isinstance(data, list) else []
+                    
+                    # Find TIS integration entry
+                    tis_entry_id = None
+                    for entry in entries:
+                        if entry.get('domain') == 'tis':
+                            tis_entry_id = entry.get('entry_id')
+                            _LOGGER.info(f"Found TIS integration with entry_id: {tis_entry_id}")
+                            break
+                    
+                    if not tis_entry_id:
+                        _LOGGER.warning("TIS integration not found in config entries")
+                        _LOGGER.info("Available domains: " + ", ".join([e.get('domain', 'unknown') for e in entries]))
+                        return False
+                    
+                    # Reload the specific entry
+                    reload_url = f"{base_url}/config/config_entries/entry/{tis_entry_id}/reload"
+                    _LOGGER.info(f"Reloading TIS integration: {reload_url}")
+                    
+                    async with session.post(reload_url, headers=headers) as reload_resp:
+                        if reload_resp.status == 200:
+                            _LOGGER.info("✅ TIS integration reloaded successfully!")
+                            return True
+                        else:
+                            _LOGGER.error(f"Failed to reload TIS integration: HTTP {reload_resp.status}")
+                            text = await reload_resp.text()
+                            _LOGGER.error(f"Response: {text}")
                             return False
                         
-                        # Reload the specific entry
-                        reload_url = f"http://supervisor/core/api/config/config_entries/entry/{tis_entry_id}/reload"
-                        async with session.post(reload_url, headers=headers) as reload_resp:
-                            if reload_resp.status == 200:
-                                _LOGGER.info("TIS integration reloaded successfully")
-                                return True
-                            else:
-                                _LOGGER.warning(f"Failed to reload TIS integration: {reload_resp.status}")
-                                return False
-                    else:
-                        _LOGGER.warning(f"Failed to get config entries: {resp.status}")
-                        return False
-                        
         except Exception as e:
-            _LOGGER.error(f"Error reloading TIS integration: {e}")
+            _LOGGER.error(f"Error reloading TIS integration: {e}", exc_info=True)
             return False
 
 
