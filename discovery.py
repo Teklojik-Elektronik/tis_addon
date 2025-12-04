@@ -87,6 +87,11 @@ def _run_discovery(udp_port: int = 6000) -> Dict[str, Dict[str, Any]]:
                         device_type_id = parsed['src_type']
                         model_name, channels = get_device_info(device_type_id)
                         
+                        # Skip unknown/system devices (Home Assistant itself)
+                        if model_name == "Unknown Device" or device_type_id == 0xFFFE:
+                            _LOGGER.debug(f"Skipping system device: {ip} ({subnet}.{device})")
+                            continue
+                        
                         # Extract device name
                         device_name_from_packet = None
                         if parsed['op_code'] == 0x000F and parsed.get('additional_data'):
@@ -143,6 +148,11 @@ def _run_discovery(udp_port: int = 6000) -> Dict[str, Dict[str, Any]]:
                     if unique_id not in discovered:
                         device_type_id = parsed['src_type']
                         model_name, channels = get_device_info(device_type_id)
+                        
+                        # Skip unknown/system devices
+                        if model_name == "Unknown Device" or device_type_id == 0xFFFE:
+                            continue
+                        
                         final_name = f"{model_name} ({subnet}.{device})"
                         
                         _LOGGER.info(f"Late discovery: {ip} ({subnet}.{device}) - {model_name}")

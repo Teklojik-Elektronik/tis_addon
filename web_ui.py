@@ -191,9 +191,9 @@ class TISWebUI:
                         <h1>TIS Akıllı Ev Yöneticisi</h1>
                     </div>
                     <div style="display: flex; gap: 10px; align-items: center;">
-                        <input type="text" id="gatewayInput" placeholder="Gateway IP" 
-                               value="${self.gateway_ip}" 
-                               style="padding: 10px; border: 2px solid #667eea; border-radius: 8px; font-size: 14px;">
+                        <input type="text" id="gatewayInput" placeholder="Gateway IP (örn: 192.168.1.200)" 
+                               value="{self.gateway_ip if self.gateway_ip != '0.0.0.0' else ''}" 
+                               style="padding: 10px; border: 2px solid #667eea; border-radius: 8px; font-size: 14px; width: 200px;">
                         <button id="scanBtn" onclick="scanDevices()">🔍 Cihazları Tara</button>
                     </div>
                 </header>
@@ -203,8 +203,8 @@ class TISWebUI:
                 <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin: 15px 0;">
                     <strong>🔌 Bağlantı Bilgileri:</strong><br>
                     <span style="font-size: 14px;">
-                        Gateway IP: <strong id="currentGateway">${self.gateway_ip}</strong> | 
-                        UDP Port: <strong>${self.udp_port}</strong> | 
+                        Gateway IP: <strong id="currentGateway">{self.gateway_ip if self.gateway_ip != '0.0.0.0' else 'Yapılandırılmadı'}</strong> | 
+                        UDP Port: <strong>{self.udp_port}</strong> | 
                         Home Assistant IP: <strong id="haIP">Kontrol ediliyor...</strong>
                     </span>
                 </div>
