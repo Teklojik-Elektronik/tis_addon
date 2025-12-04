@@ -135,6 +135,26 @@ class TISWebUI:
                     box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
                     transform: translateY(-4px);
                 }
+                .device-card.added {
+                    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+                    border: 2px solid #4CAF50;
+                }
+                .device-card.added .device-header {
+                    position: relative;
+                }
+                .device-card.added .device-header::after {
+                    content: '✓ Eklenmiş';
+                    position: absolute;
+                    top: -10px;
+                    right: -10px;
+                    background: #4CAF50;
+                    color: white;
+                    padding: 4px 12px;
+                    border-radius: 12px;
+                    font-size: 12px;
+                    font-weight: bold;
+                    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+                }
                 .device-header {
                     display: flex;
                     justify-content: space-between;
@@ -272,8 +292,15 @@ class TISWebUI:
 
                 function createDeviceCard(dev) {
                     const icon = getDeviceIcon(dev.model_name);
+                    const addedClass = dev.is_added ? 'added' : '';
+                    const addButtonText = dev.is_added ? '✓ Eklenmiş' : '➕ Ekle';
+                    const addButtonDisabled = dev.is_added ? 'disabled' : '';
+                    const addButtonStyle = dev.is_added 
+                        ? 'background: #9e9e9e; cursor: not-allowed;' 
+                        : 'background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);';
+                    
                     return `
-                        <div class="device-card">
+                        <div class="device-card ${addedClass}">
                             <div class="device-header">
                                 <div class="device-name">${dev.name}</div>
                                 <div class="device-icon">${icon}</div>
@@ -291,9 +318,9 @@ class TISWebUI:
                                 <button class="btn-control btn-off" onclick="controlDevice(${dev.subnet}, ${dev.device}, 0, 0)">
                                     🌙 Kapat
                                 </button>
-                                <button class="btn-control" style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);" 
+                                <button class="btn-control" style="${addButtonStyle}" ${addButtonDisabled}
                                         onclick="addDevice(${dev.subnet}, ${dev.device}, '${dev.model_name}', ${dev.channels}, '${dev.name}')">
-                                    ➕ Ekle
+                                    ${addButtonText}
                                 </button>
                             </div>
                         </div>
@@ -392,7 +419,33 @@ class TISWebUI:
         # Get gateway from query parameter or use default
         gateway_ip = request.query.get('gateway', self.gateway_ip)
         devices = await discover_tis_devices(gateway_ip, self.udp_port)
-        return web.json_response(list(devices.values()))
+        
+        # Load already added devices from JSON
+        import json
+        added_devices = set()
+        try:
+            with open('/config/tis_devices.json', 'r') as f:
+                existing_devices = json.load(f)
+                # Extract unique_ids: tis_{subnet}_{device_id}
+                added_devices = set(existing_devices.keys())
+                _LOGGER.info(f"Found {len(added_devices)} already added devices")
+        except FileNotFoundError:
+            _LOGGER.info("No existing devices found")
+        except Exception as e:
+            _LOGGER.warning(f"Error reading existing devices: {e}")
+        
+        # Mark devices as already added
+        devices_list = []
+        for device in devices.values():
+            subnet = device.get('subnet')
+            device_id = device.get('device_id')
+            unique_id = f"tis_{subnet}_{device_id}"
+            
+            # Add 'is_added' flag
+            device['is_added'] = unique_id in added_devices
+            devices_list.append(device)
+        
+        return web.json_response(devices_list)
 
     async def handle_control(self, request):
         """Handle device control request."""
