@@ -1,0 +1,28 @@
+name: "TIS Akıllı Ev Sistemi"
+description: "TIS cihazlarınızı UDP üzerinden yönetmek için modern web arayüzü. 191+ cihaz tipi desteklenir."
+version: "1.0.0"
+slug: "tis_control"
+init: false
+arch:
+  - aarch64
+  - amd64
+  - armhf
+  - armv7
+  - i386
+ports:
+  8888/tcp: 8888
+ports_description:
+  8888/tcp: "Web arayüzü portu - Cihaz yönetimi için"
+webui: "http://[HOST]:[PORT:8888]"
+startup: application
+boot: auto
+options:
+  gateway_ip: "192.168.1.200"
+  udp_port: 6000
+  log_level: "info"
+schema:
+  gateway_ip: str
+  udp_port: int
+  log_level: list(debug|info|warning|error)
+image: "ghcr.io/{arch}-addon-tis-control"
+url: "https://github.com/yourusername/tis-homeassistant-addon"
