@@ -18,6 +18,7 @@ class TISWebUI:
         self.udp_port = udp_port
         self.app = web.Application()
         self.app.router.add_get('/', self.handle_index)
+        self.app.router.add_get('/api/info', self.handle_info)
         self.app.router.add_get('/api/devices', self.handle_devices)
         self.app.router.add_post('/api/control', self.handle_control)
         self.runner = None
@@ -189,10 +190,24 @@ class TISWebUI:
                         <div class="logo">🏠</div>
                         <h1>TIS Akıllı Ev Yöneticisi</h1>
                     </div>
-                    <button id="scanBtn" onclick="scanDevices()">🔍 Cihazları Tara</button>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="text" id="gatewayInput" placeholder="Gateway IP" 
+                               value="${self.gateway_ip}" 
+                               style="padding: 10px; border: 2px solid #667eea; border-radius: 8px; font-size: 14px;">
+                        <button id="scanBtn" onclick="scanDevices()">🔍 Cihazları Tara</button>
+                    </div>
                 </header>
                 
                 <div id="status" class="status">Hazır - Cihazları taramak için butona basın</div>
+                
+                <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin: 15px 0;">
+                    <strong>🔌 Bağlantı Bilgileri:</strong><br>
+                    <span style="font-size: 14px;">
+                        Gateway IP: <strong id="currentGateway">${self.gateway_ip}</strong> | 
+                        UDP Port: <strong>${self.udp_port}</strong> | 
+                        Home Assistant IP: <strong id="haIP">Kontrol ediliyor...</strong>
+                    </span>
+                </div>
                 
                 <div id="devicesContainer" class="devices-grid">
                     <div class="empty-state">
@@ -204,10 +219,24 @@ class TISWebUI:
             </div>
 
             <script>
+                // Get Home Assistant IP
+                fetch('/api/info')
+                    .then(r => r.json())
+                    .then(data => {
+                        document.getElementById('haIP').textContent = data.ha_ip || 'N/A';
+                    })
+                    .catch(e => {
+                        document.getElementById('haIP').textContent = 'Bilinmiyor';
+                    });
+
                 async function scanDevices() {
                     const btn = document.getElementById('scanBtn');
                     const status = document.getElementById('status');
                     const container = document.getElementById('devicesContainer');
+                    const gatewayInput = document.getElementById('gatewayInput');
+                    
+                    // Update current gateway display
+                    document.getElementById('currentGateway').textContent = gatewayInput.value;
                     
                     btn.disabled = true;
                     btn.innerText = "⏳ Taranıyor...";
@@ -215,7 +244,7 @@ class TISWebUI:
                     container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⏳</div><p>Ağ taranıyor...</p></div>';
                     
                     try {
-                        const response = await fetch('/api/devices');
+                        const response = await fetch('/api/devices?gateway=' + encodeURIComponent(gatewayInput.value));
                         const devices = await response.json();
                         
                         status.innerText = `✅ Tarama tamamlandı: ${devices.length} cihaz bulundu`;
@@ -304,9 +333,28 @@ class TISWebUI:
         """
         return web.Response(text=html, content_type='text/html')
 
+    async def handle_info(self, request):
+        """Handle info request."""
+        import socket
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ha_ip = s.getsockname()[0]
+            s.close()
+        except:
+            ha_ip = "unknown"
+        
+        return web.json_response({
+            'gateway_ip': self.gateway_ip,
+            'udp_port': self.udp_port,
+            'ha_ip': ha_ip
+        })
+
     async def handle_devices(self, request):
         """Handle device list request."""
-        devices = await discover_tis_devices(self.gateway_ip, self.udp_port)
+        # Get gateway from query parameter or use default
+        gateway_ip = request.query.get('gateway', self.gateway_ip)
+        devices = await discover_tis_devices(gateway_ip, self.udp_port)
         return web.json_response(list(devices.values()))
 
     async def handle_control(self, request):
