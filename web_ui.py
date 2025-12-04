@@ -298,14 +298,6 @@ class TISWebUI:
                         alert('Hata: ' + err.message);
                     }
                 }
-
-                // Auto-refresh every 30 seconds
-                setInterval(() => {
-                    const btn = document.getElementById('scanBtn');
-                    if (!btn.disabled) {
-                        scanDevices();
-                    }
-                }, 30000);
             </script>
         </body>
         </html>
