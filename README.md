@@ -77,10 +77,11 @@ Addon ile eklediğiniz cihazları Home Assistant'ta görmek için **TIS Entegras
 Addon'dan yeni bir cihaz eklediğinizde:
 
 1. Web UI'dan **"Ekle"** butonuna tıklayın
-2. Settings → Integrations → **TIS** → **⋮ (üç nokta)** → **Reload** yapın
-3. Yeni cihazlar otomatik olarak entity listesine eklenecek
+2. Cihaz `/config/tis_devices.json` dosyasına kaydedilecek
+3. **Manuel olarak** Settings → Integrations → **TIS** → **⋮ (üç nokta)** → **Reload** yapın
+4. Yeni cihazlar entity listesine eklenecek
 
-> **Not:** Home Assistant restart'a gerek yok, sadece entegrasyonu reload etmek yeterli!
+> **Not:** Şu anda otomatik reload çalışmıyor, manuel reload yapmanız gerekiyor. Home Assistant restart'a gerek yok!
 
 ## 📱 Desteklenen Cihazlar
 
