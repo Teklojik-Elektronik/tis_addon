@@ -23,8 +23,8 @@ TIS cihazlarınızı yönetmek için web tabanlı arayüz. Home Assistant addon 
    https://github.com/yourusername/tis-homeassistant-addon
    ```
 4. **TIS Akıllı Ev Sistemi** addon'unu bulun ve **Install** tıklayın
-5. Ayarlardan **gateway_ip** değerini düzenleyin (varsayılan: 192.168.1.200)
-6. **Start** butonuna tıklayın
+5. **Configuration** sekmesinden **gateway_ip** değerini girin (TIS gateway IP adresi)
+6. **Save** → **Start** butonuna tıklayın
 7. **Web kullanıcı arayüzünü aç** butonuna tıklayarak cihazlarınızı yönetin!
 
 ### Lokal Test (Geliştirme)
@@ -40,19 +40,26 @@ Tarayıcınızda açın: `http://localhost:8888`
 
 ## ⚙️ Yapılandırma
 
-Addon ayarları:
+**Kurulumdan sonra mutlaka yapılandırın:**
+
+1. Addon sayfasında **Configuration** sekmesine gidin
+2. **Gateway IP** alanına TIS gateway cihazınızın IP adresini girin
+3. **UDP Port** varsayılan olarak 6000'dir (değiştirmenize gerek yok)
+4. **Save** tıklayın
+5. Addon'u **Start** edin
 
 ```yaml
-gateway_ip: "192.168.1.200"  # TIS gateway IP adresi
+gateway_ip: ""              # TIS gateway IP (ÖRN: 192.168.1.200)
 udp_port: 6000               # UDP iletişim portu
+log_level: info              # Log seviyesi
 ```
 
 ## 🎯 Kullanım
 
 1. Addon başlatıldıktan sonra **"Web kullanıcı arayüzünü aç"** butonuna tıklayın
-2. **"Cihazları Tara"** butonuna basarak ağınızdaki TIS cihazlarını keşfedin
-3. Her cihaz için **"Aç"** veya **"Kapat"** butonlarını kullanın
-4. Cihazlar 30 saniyede bir otomatik olarak yenilenir
+2. **Gateway IP** kutusuna TIS gateway adresinizi girin (veya Configuration'dan ayarlayın)
+3. **"Cihazları Tara"** butonuna basarak ağınızdaki TIS cihazlarını keşfedin
+4. Her cihaz için **"Aç"** veya **"Kapat"** butonlarını kullanın
 
 ## 📱 Desteklenen Cihazlar
 
@@ -75,9 +82,11 @@ udp_port: 6000               # UDP iletişim portu
 ## 🐛 Sorun Giderme
 
 ### Cihazlar bulunamıyor
-- Gateway IP adresinin doğru olduğundan emin olun
+- **Gateway IP** adresini Web UI'deki input kutusundan veya Configuration sekmesinden doğru girin
+- Gateway cihazının IP adresini öğrenmek için TIS uygulamasından bakın
 - Cihazların açık ve ağa bağlı olduğunu kontrol edin
 - Firewall ayarlarını kontrol edin (UDP port 6000)
+- Home Assistant ile gateway aynı ağda mı kontrol edin
 
 ### Web arayüzüne ulaşılamıyor
 - Addon'un çalıştığından emin olun (Yeşil durum göstergesi)

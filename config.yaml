@@ -18,7 +18,7 @@ webui: "http://[HOST]:[PORT:8888]"
 startup: application
 boot: auto
 options:
-  gateway_ip: "192.168.1.200"
+  gateway_ip: ""
   udp_port: 6000
   log_level: "info"
 schema:

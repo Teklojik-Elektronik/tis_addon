@@ -4,8 +4,15 @@ set -e
 CONFIG_PATH=/data/options.json
 
 # Read configuration from options.json
-GATEWAY_IP=$(jq --raw-output '.gateway_ip // "192.168.1.200"' $CONFIG_PATH)
+GATEWAY_IP=$(jq --raw-output '.gateway_ip // ""' $CONFIG_PATH)
 UDP_PORT=$(jq --raw-output '.udp_port // "6000"' $CONFIG_PATH)
+
+# Check if gateway IP is configured
+if [ -z "$GATEWAY_IP" ]; then
+    echo "[WARNING] Gateway IP not configured in addon settings!"
+    echo "[INFO] You can configure it from Web UI or addon Configuration tab"
+    GATEWAY_IP="0.0.0.0"
+fi
 
 echo "[INFO] Starting TIS Control Web UI..."
 echo "[INFO] Gateway IP: ${GATEWAY_IP}"
