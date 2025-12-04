@@ -440,8 +440,8 @@ class TISWebUI:
                 'name': device_name or f"{model_name} ({subnet}.{device_id})"
             }
             
-            # Save to /data/tis_devices.json (TIS integration reads from here)
-            devices_file = '/data/tis_devices.json'
+            # Save to /config/tis_devices.json (TIS integration reads from here)
+            devices_file = '/config/tis_devices.json'
             devices = {}
             try:
                 with open(devices_file, 'r') as f:
