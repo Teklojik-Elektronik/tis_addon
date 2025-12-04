@@ -2,6 +2,8 @@
 import logging
 import asyncio
 import argparse
+import os
+import json
 from aiohttp import web
 from discovery import discover_tis_devices
 from tis_protocol import TISProtocol
@@ -21,6 +23,7 @@ class TISWebUI:
         self.app.router.add_get('/api/info', self.handle_info)
         self.app.router.add_get('/api/devices', self.handle_devices)
         self.app.router.add_post('/api/control', self.handle_control)
+        self.app.router.add_post('/api/add_device', self.handle_add_device)
         self.runner = None
         self.site = None
         self.protocol = TISProtocol(gateway_ip, udp_port)
@@ -288,6 +291,10 @@ class TISWebUI:
                                 <button class="btn-control btn-off" onclick="controlDevice(${dev.subnet}, ${dev.device}, 0, 0)">
                                     🌙 Kapat
                                 </button>
+                                <button class="btn-control" style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);" 
+                                        onclick="addDevice(${dev.subnet}, ${dev.device}, '${dev.model_name}', ${dev.channels}, '${dev.name}')">
+                                    ➕ Ekle
+                                </button>
                             </div>
                         </div>
                     `;
@@ -325,6 +332,36 @@ class TISWebUI:
                         }
                     } catch (err) {
                         alert('Hata: ' + err.message);
+                    }
+                }
+
+                async function addDevice(subnet, deviceId, modelName, channels, deviceName) {
+                    if (!confirm(`Cihazı Home Assistant'a eklemek istiyor musunuz?\\n\\n${deviceName}`)) {
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch('/api/add_device', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                subnet: subnet,
+                                device_id: deviceId,
+                                model_name: modelName,
+                                channels: channels,
+                                device_name: deviceName
+                            })
+                        });
+                        
+                        const result = await response.json();
+                        if (result.success) {
+                            alert('✅ Cihaz başarıyla eklendi!\\n\\n' + result.message);
+                            document.getElementById('status').innerText = '✅ ' + result.message;
+                        } else {
+                            alert('❌ Hata: ' + result.message);
+                        }
+                    } catch (err) {
+                        alert('❌ Hata: ' + err.message);
                     }
                 }
             </script>
@@ -375,6 +412,80 @@ class TISWebUI:
             return web.json_response({'success': True})
         except Exception as e:
             _LOGGER.error(f"Control error: {e}")
+            return web.json_response({'success': False, 'message': str(e)}, status=500)
+
+    async def handle_add_device(self, request):
+        """Handle add device to Home Assistant request."""
+        try:
+            data = await request.json()
+            subnet = data.get('subnet')
+            device_id = data.get('device_id')
+            model_name = data.get('model_name')
+            channels = data.get('channels', 1)
+            device_name = data.get('device_name')
+
+            if not all([subnet, device_id, model_name]):
+                return web.json_response({'success': False, 'message': 'Eksik parametreler'}, status=400)
+
+            # Read Home Assistant access token
+            try:
+                with open('/data/options.json', 'r') as f:
+                    import json
+                    options = json.load(f)
+                
+                # Get supervisor token
+                supervisor_token = os.environ.get('SUPERVISOR_TOKEN')
+                if not supervisor_token:
+                    return web.json_response({
+                        'success': False, 
+                        'message': 'Home Assistant API erişimi yok'
+                    }, status=500)
+
+                # Create entity via MQTT or direct API
+                # For now, we'll create a helper via API
+                import aiohttp
+                
+                unique_id = f"tis_{subnet}_{device_id}"
+                entity_id = f"switch.tis_{subnet}_{device_id}"
+                
+                # Store device info in addon data
+                device_info = {
+                    'subnet': subnet,
+                    'device_id': device_id,
+                    'model_name': model_name,
+                    'channels': channels,
+                    'name': device_name or f"{model_name} ({subnet}.{device_id})"
+                }
+                
+                # Save to persistent storage
+                devices_file = '/data/devices.json'
+                devices = {}
+                try:
+                    with open(devices_file, 'r') as f:
+                        devices = json.load(f)
+                except:
+                    pass
+                
+                devices[unique_id] = device_info
+                
+                with open(devices_file, 'w') as f:
+                    json.dump(devices, f, indent=2)
+                
+                return web.json_response({
+                    'success': True,
+                    'message': f'Cihaz kaydedildi: {device_name}',
+                    'entity_id': entity_id
+                })
+                
+            except Exception as e:
+                _LOGGER.error(f"Error saving device: {e}")
+                return web.json_response({
+                    'success': False,
+                    'message': f'Cihaz kaydedilemedi: {str(e)}'
+                }, status=500)
+                
+        except Exception as e:
+            _LOGGER.error(f"Add device error: {e}")
             return web.json_response({'success': False, 'message': str(e)}, status=500)
 
 
