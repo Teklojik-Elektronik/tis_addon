@@ -463,7 +463,7 @@ class TISWebUI:
                     }
                     
                     return `
-                        <div class="device-card ${addedClass}">
+                        <div class="device-card ${addedClass}" data-subnet="${dev.subnet}" data-device="${dev.device}">
                             <div class="device-header">
                                 <div class="device-name">${dev.name}</div>
                                 <div class="device-icon">${icon}</div>
@@ -544,22 +544,19 @@ class TISWebUI:
                         if (result.success) {
                             alert('✅ Cihaz başarıyla eklendi!\\n\\n' + result.message);
                             document.getElementById('status').innerText = '✅ ' + result.message;
-                            // UI'daki butonu güncelle
-                            const cards = document.querySelectorAll('.device-card');
-                            cards.forEach(card => {
-                                const cardText = card.innerText;
-                                if (cardText.includes(`${subnet}/${deviceId}`)) {
-                                    const controls = card.querySelector('.device-controls');
-                                    if (controls) {
-                                        controls.innerHTML = `
-                                            <button class="btn-control btn-on" onclick="controlDevice(${subnet}, ${deviceId}, 1, 0)">💡 Aç</button>
-                                            <button class="btn-control btn-off" onclick="controlDevice(${subnet}, ${deviceId}, 0, 0)">🌙 Kapat</button>
-                                            <button class="btn-control btn-remove" onclick="removeDevice(${subnet}, ${deviceId}, '${deviceName}')">🗑️ Sil</button>
-                                        `;
-                                        card.classList.add('added');
-                                    }
+                            // UI'daki kartı güncelle (data-attribute ile bul)
+                            const card = document.querySelector(`.device-card[data-subnet="${subnet}"][data-device="${deviceId}"]`);
+                            if (card) {
+                                const controls = card.querySelector('.device-controls');
+                                if (controls) {
+                                    controls.innerHTML = `
+                                        <button class="btn-control btn-on" onclick="controlDevice(${subnet}, ${deviceId}, 1, 0)">💡 Aç</button>
+                                        <button class="btn-control btn-off" onclick="controlDevice(${subnet}, ${deviceId}, 0, 0)">🌙 Kapat</button>
+                                        <button class="btn-control btn-remove" onclick="removeDevice(${subnet}, ${deviceId}, '${deviceName}')">🗑️ Sil</button>
+                                    `;
+                                    card.classList.add('added');
                                 }
-                            });
+                            }
                         } else {
                             alert('❌ Hata: ' + result.message);
                         }
@@ -589,14 +586,11 @@ class TISWebUI:
                         if (result.success) {
                             alert('✅ Cihaz başarıyla silindi!\\n\\n' + result.message);
                             document.getElementById('status').innerText = '✅ ' + result.message;
-                            // UI'dan cihaz kartını kaldır (tarama yapmadan)
-                            const cards = document.querySelectorAll('.device-card');
-                            cards.forEach(card => {
-                                const cardText = card.innerText;
-                                if (cardText.includes(`${subnet}/${deviceId}`)) {
-                                    card.remove();
-                                }
-                            });
+                            // UI'dan cihaz kartını kaldır (data-attribute ile bul)
+                            const card = document.querySelector(`.device-card[data-subnet="${subnet}"][data-device="${deviceId}"]`);
+                            if (card) {
+                                card.remove();
+                            }
                         } else {
                             alert('❌ Hata: ' + result.message);
                         }
@@ -936,9 +930,6 @@ class TISWebUI:
             if not all([subnet, device_id, model_name]):
                 return web.json_response({'success': False, 'message': 'Eksik parametreler'}, status=400)
 
-            # Save device to JSON file for TIS integration to read
-            import json
-            
             unique_id = f"tis_{subnet}_{device_id}"
             
             device_info = {
@@ -982,7 +973,7 @@ class TISWebUI:
                 })
                 
         except Exception as e:
-            _LOGGER.error(f"Add device error: {e}")
+            _LOGGER.error(f"Add device error: {e}", exc_info=True)
             return web.json_response({'success': False, 'message': f'❌ Hata: {str(e)}'}, status=500)
     
     async def handle_remove_device(self, request):
@@ -1032,7 +1023,7 @@ class TISWebUI:
                 })
                 
         except Exception as e:
-            _LOGGER.error(f"Remove device error: {e}")
+            _LOGGER.error(f"Remove device error: {e}", exc_info=True)
             return web.json_response({'success': False, 'message': f'❌ Hata: {str(e)}'}, status=500)
     
     async def _reload_tis_integration(self):
