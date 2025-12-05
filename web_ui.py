@@ -70,7 +70,7 @@ class TISWebUI:
                 * { margin: 0; padding: 0; box-sizing: border-box; }
                 body { 
                     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-                    background: linear-gradient(135deg, #6B73FF 0%, #8B5CF6 100%);
+                    background: #f0f0f0;
                     min-height: 100vh;
                     padding: 0;
                     margin: 0;
@@ -79,221 +79,201 @@ class TISWebUI:
                     max-width: 100%; 
                     margin: 0; 
                     background: white; 
-                    padding: 20px 40px; 
+                    padding: 0; 
                     min-height: 100vh;
                     border-radius: 0; 
                     box-shadow: none; 
+                    display: flex;
+                    flex-direction: column;
                 }
                 .container.full-width {
                     max-width: 100%;
                     margin: 0;
                     border-radius: 0;
                 }
-                header {
+                
+                /* Menu Bar - TIS Style */
+                .menubar {
+                    background: #f5f5f5;
+                    border-bottom: 1px solid #d0d0d0;
+                    padding: 8px 15px;
                     display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 20px;
-                    padding-bottom: 15px;
-                    border-bottom: 1px solid #e0e0e0;
+                    gap: 5px;
                 }
-                h1 { 
-                    color: #1a1a1a; 
-                    font-size: 24px;
-                    font-weight: 600;
-                    margin-left: 10px;
-                }
-                .logo { font-size: 42px; }
-                .header-left {
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                }
-                .header-right {
-                    display: flex;
-                    gap: 10px;
-                    align-items: center;
-                }
-                button { 
-                    padding: 10px 20px; 
-                    background: linear-gradient(135deg, #6B73FF 0%, #8B5CF6 100%);
-                    color: white; 
-                    border: none; 
-                    border-radius: 6px; 
-                    cursor: pointer; 
-                    font-size: 14px; 
-                    font-weight: 600;
-                    transition: all 0.2s; 
-                    box-shadow: 0 2px 8px rgba(107, 115, 255, 0.3);
-                }
-                button:hover { 
-                    transform: translateY(-1px);
-                    box-shadow: 0 4px 12px rgba(107, 115, 255, 0.4);
-                }
-                button:active { transform: translateY(0); }
-                button:disabled { 
-                    background: #ccc; 
-                    cursor: not-allowed; 
-                    box-shadow: none;
-                }
-                .btn-scan {
-                    background: linear-gradient(135deg, #6B73FF 0%, #8B5CF6 100%);
-                }
-                .btn-debug {
-                    background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
-                    box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
-                }
-                .status { 
-                    margin: 15px 0; 
-                    padding: 12px 15px; 
-                    background: #e8f4fd; 
-                    border: 1px solid #90caf9;
-                    border-radius: 6px;
-                    font-weight: 400;
-                    font-size: 14px;
-                    color: #1976d2;
-                }
-                .info-box {
-                    margin: 15px 0;
-                    padding: 15px;
-                    background: #e8f4fd;
-                    border: 1px solid #90caf9;
-                    border-radius: 8px;
-                    display: flex;
-                    align-items: flex-start;
-                    gap: 12px;
-                }
-                .info-box-icon {
-                    font-size: 24px;
-                    flex-shrink: 0;
-                }
-                .info-box-content {
-                    flex: 1;
-                }
-                .info-box-content strong {
-                    display: block;
-                    color: #1976d2;
-                    font-size: 14px;
-                    margin-bottom: 5px;
-                }
-                .info-box-content span {
+                .menubar-item {
+                    padding: 6px 12px;
+                    background: transparent;
+                    border: 1px solid transparent;
+                    border-radius: 3px;
+                    cursor: pointer;
                     font-size: 13px;
-                    color: #555;
-                    line-height: 1.5;
-                }
-                .devices-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-                    gap: 15px;
-                    margin-top: 15px;
-                }
-                .device-card {
-                    background: #fff;
-                    border: 1px solid #e0e0e0;
-                    border-radius: 8px;
-                    padding: 18px;
+                    font-weight: normal;
+                    color: #333;
                     transition: all 0.2s;
-                    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-                    position: relative;
                 }
-                .device-card:hover {
-                    border-color: #6B73FF;
-                    box-shadow: 0 4px 12px rgba(107, 115, 255, 0.15);
-                    transform: translateY(-2px);
+                .menubar-item:hover {
+                    background: #e0e0e0;
+                    border-color: #c0c0c0;
                 }
-                .device-card.added {
-                    background: #f1f8f4;
-                    border: 2px solid #4CAF50;
-                }
-                .device-card.added::before {
-                    content: '✓ Eklenmiş';
-                    position: absolute;
-                    top: -8px;
-                    right: 10px;
-                    background: #4CAF50;
-                    color: white;
-                    padding: 4px 10px;
-                    border-radius: 12px;
-                    font-size: 11px;
-                    font-weight: 600;
-                    box-shadow: 0 2px 6px rgba(76, 175, 80, 0.3);
-                    z-index: 10;
-                }
-                .device-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: flex-start;
-                    margin-bottom: 12px;
-                }
-                .device-name {
-                    font-size: 16px;
-                    font-weight: 600;
-                    color: #1a1a1a;
-                    flex: 1;
-                }
-                .device-icon {
-                    font-size: 36px;
-                    line-height: 1;
-                }
-                .device-info {
-                    margin: 8px 0;
-                    color: #555;
+                
+                /* Title Bar */
+                .titlebar {
+                    background: white;
+                    padding: 10px 15px;
+                    border-bottom: 1px solid #e0e0e0;
                     font-size: 13px;
-                    line-height: 1.6;
-                }
-                .device-info strong {
-                    color: #1a1a1a;
-                    font-weight: 600;
-                }
-                .device-controls {
-                    margin-top: 12px;
-                    padding-top: 12px;
-                    border-top: 1px solid #e0e0e0;
-                    display: flex;
-                    gap: 8px;
-                }
-                .btn-control {
-                    flex: 1;
-                    padding: 8px 12px;
-                    font-size: 13px;
-                    font-weight: 600;
-                }
-                .btn-on {
-                    background: #4CAF50;
-                    box-shadow: 0 2px 6px rgba(76, 175, 80, 0.3);
-                }
-                .btn-on:hover {
-                    background: #45a049;
-                }
-                .btn-off {
-                    background: #f44336;
-                    box-shadow: 0 2px 6px rgba(244, 67, 54, 0.3);
-                }
-                .btn-off:hover {
-                    background: #d32f2f;
-                }
-                .btn-add {
-                    background: #2196F3;
-                    box-shadow: 0 2px 6px rgba(33, 150, 243, 0.3);
-                }
-                .btn-add:hover {
-                    background: #1976D2;
-                }
-                .btn-remove {
-                    background: #f44336;
-                    box-shadow: 0 2px 6px rgba(244, 67, 54, 0.3);
-                }
-                .btn-remove:hover {
-                    background: #d32f2f;
-                }
-                .empty-state {
-                    text-align: center;
-                    padding: 60px 20px;
                     color: #666;
                 }
-                .empty-state-icon {
-                    font-size: 64px;
-                    margin-bottom: 20px;
+                
+                /* Toolbar */
+                .toolbar {
+                    background: #f9f9f9;
+                    padding: 8px 15px;
+                    border-bottom: 1px solid #e0e0e0;
+                    display: flex;
+                    gap: 8px;
+                    align-items: center;
+                }
+                .toolbar button {
+                    padding: 6px 16px;
+                    background: #fff;
+                    border: 1px solid #ccc;
+                    border-radius: 3px;
+                    font-size: 13px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+                }
+                .toolbar button:hover {
+                    background: #f0f0f0;
+                    border-color: #999;
+                }
+                .toolbar button:active {
+                    background: #e0e0e0;
+                }
+                .toolbar button.primary {
+                    background: #4a90e2;
+                    color: white;
+                    border-color: #357abd;
+                }
+                .toolbar button.primary:hover {
+                    background: #357abd;
+                }
+                
+                /* Table Container */
+                .table-container {
+                    flex: 1;
+                    overflow: auto;
+                    background: white;
+                }
+                .devices-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-size: 13px;
+                }
+                .devices-table thead {
+                    background: #f5f5f5;
+                    border-bottom: 2px solid #d0d0d0;
+                    position: sticky;
+                    top: 0;
+                    z-index: 10;
+                }
+                .devices-table th {
+                    padding: 10px 12px;
+                    text-align: left;
+                    font-weight: 600;
+                    color: #333;
+                    border-right: 1px solid #e0e0e0;
+                    white-space: nowrap;
+                }
+                .devices-table th:last-child {
+                    border-right: none;
+                }
+                .devices-table tbody tr {
+                    border-bottom: 1px solid #e8e8e8;
+                    transition: background 0.2s;
+                }
+                .devices-table tbody tr:hover {
+                    background: #f9f9f9;
+                }
+                .devices-table tbody tr.added {
+                    background: #e8f5e9;
+                }
+                .devices-table tbody tr.added:hover {
+                    background: #d0f0d2;
+                }
+                .devices-table td {
+                    padding: 10px 12px;
+                    border-right: 1px solid #f0f0f0;
+                    color: #333;
+                }
+                .devices-table td:last-child {
+                    border-right: none;
+                }
+                .devices-table td.center {
+                    text-align: center;
+                }
+                
+                /* Status Indicator */
+                .status-icon {
+                    display: inline-block;
+                    width: 16px;
+                    height: 16px;
+                    line-height: 16px;
+                    text-align: center;
+                    font-size: 12px;
+                }
+                .status-icon.added {
+                    color: #4CAF50;
+                }
+                
+                /* Action Buttons in Table */
+                .table-actions {
+                    display: flex;
+                    gap: 4px;
+                }
+                .table-actions button {
+                    padding: 4px 10px;
+                    font-size: 12px;
+                    border: 1px solid #ccc;
+                    border-radius: 3px;
+                    background: white;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .table-actions button:hover {
+                    background: #f0f0f0;
+                }
+                .table-actions button.btn-on {
+                    background: #4CAF50;
+                    color: white;
+                    border-color: #45a049;
+                }
+                .table-actions button.btn-off {
+                    background: #f44336;
+                    color: white;
+                    border-color: #d32f2f;
+                }
+                .table-actions button.btn-add {
+                    background: #2196F3;
+                    color: white;
+                    border-color: #1976D2;
+                }
+                .table-actions button.btn-remove {
+                    background: #f44336;
+                    color: white;
+                    border-color: #d32f2f;
+                }
+                
+                /* Status Bar */
+                .statusbar {
+                    background: #f5f5f5;
+                    border-top: 1px solid #d0d0d0;
+                    padding: 6px 15px;
+                    font-size: 12px;
+                    color: #666;
+                    display: flex;
+                    justify-content: space-between;
                 }
                 .debug-panel {
                     background: #1e1e1e;
@@ -345,58 +325,64 @@ class TISWebUI:
         </head>
         <body>
             <div class="container">
-                <header>
-                    <div class="header-left">
-                        <div class="logo">🏠</div>
-                        <h1>TIS Akıllı Ev Yöneticisi</h1>
-                    </div>
-                    <div class="header-right">
-                        <button id="scanBtn" class="btn-scan" onclick="scanDevices()">🔍 Cihazları Tara</button>
-                        <button id="debugBtn" class="btn-debug" onclick="toggleDebug()">🔧 Debug Tool</button>
-                    </div>
-                </header>
-                
-                <div id="gatewayWarning" style="display: none; background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <span style="font-size: 24px;">⚠️</span>
-                        <div style="flex: 1;">
-                            <strong>Eklenti Yapılandırması Eksik</strong><br>
-                            <span style="font-size: 13px; color: #856404;">Gateway IP bilgileri girilmemiş. Lütfen addon ayarlarından Gateway IP adresini yapılandırın.<br>
-                            Settings → Add-ons → TIS Akıllı Ev Sistemi → Configuration → Gateway IP</span>
-                        </div>
-                    </div>
+                <!-- Menu Bar -->
+                <div class="menubar">
+                    <button class="menubar-item">Project</button>
+                    <button class="menubar-item">Configuration</button>
+                    <button class="menubar-item">Network</button>
+                    <button class="menubar-item">Delete</button>
+                    <button class="menubar-item">Backup/Restore</button>
+                    <button class="menubar-item">Language</button>
+                    <button class="menubar-item">About</button>
                 </div>
                 
-                <!-- Bilgi Mesajı (TIS DevSearch Stilinde) -->
-                <div class="info-box">
-                    <div class="info-box-icon">✅</div>
-                    <div class="info-box-content">
-                        <strong>Cihaz eklendi: TIS-4CH-AIN (1.109)</strong>
-                        <span>
-                            🔍 Sensörleri görüntülemek için TIS entegrasyonunu manuel yenileyin:<br>
-                            <strong>Settings → Integrations → TIS → ⋮ → Reload</strong>
-                        </span>
-                    </div>
+                <!-- Title Bar -->
+                <div class="titlebar">
+                    TIS Configuration Software / HomeAssistant Integration / Devices
                 </div>
                 
-                <div id="status" class="status">Hazır - Cihazları taramak için butona basın</div>
-                
-                <div id="debugPanel" class="debug-panel" style="display: none;">
-                    <div class="debug-header">
-                        <strong>📡 Network Debug Monitor</strong>
-                        <button onclick="clearDebugLog()" style="padding: 5px 10px; font-size: 12px; background: #f44336;">Temizle</button>
-                    </div>
-                    <div id="debugLog" style="min-height: 100px;">
-                        <div style="color: #858585; text-align: center; padding: 20px;">Debug modu başlatılmadı...</div>
-                    </div>
+                <!-- Toolbar -->
+                <div class="toolbar">
+                    <button id="scanBtn" class="primary" onclick="scanDevices()">🔍 Scan Network</button>
+                    <button onclick="refreshTable()">🔄 Refresh</button>
+                    <button onclick="toggleDebug()">🔧 Debug Tool</button>
                 </div>
                 
-                <div id="devicesContainer" class="devices-grid">
-                    <div class="empty-state">
-                        <div class="empty-state-icon">📱</div>
-                        <p>Henüz tarama yapılmadı</p>
-                        <p style="font-size: 14px; margin-top: 10px;">Yukarıdaki "Cihazları Tara" butonuna basın</p>
-                    </div>
+                <!-- Gateway Warning -->
+                <div id="gatewayWarning" style="display: none; background: #fff3cd; border-bottom: 2px solid #ffc107; padding: 12px 15px;">
+                    <strong>⚠️ Configuration Missing:</strong> Gateway IP not configured.
+                </div>
+                
+                <!-- Table Container -->
+                <div class="table-container">
+                    <table class="devices-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;">Status</th>
+                                <th style="width: 80px;">Subnet</th>
+                                <th style="width: 80px;">Device</th>
+                                <th style="width: 200px;">Model</th>
+                                <th style="width: 150px;">IP Address</th>
+                                <th style="width: 80px;">Channels</th>
+                                <th style="width: 300px;">Description</th>
+                                <th style="width: 280px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="devicesTableBody">
+                            <tr>
+                                <td colspan="8" style="text-align: center; padding: 60px; color: #999;">
+                                    <div style="font-size: 48px; margin-bottom: 15px;">📱</div>
+                                    <div style="font-size: 14px;">No devices found. Click "Scan Network" to discover devices.</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Status Bar -->
+                <div class="statusbar">
+                    <div id="statusText">Ready - Click "Scan Network" to discover devices</div>
+                    <div id="deviceCount">Total Devices: 0</div>
                 </div>
             </div>
 
@@ -422,197 +408,95 @@ class TISWebUI:
                 });
                 
                 function toggleDebug() {
-                    debugMode = !debugMode;
-                    const panel = document.getElementById('debugPanel');
-                    const btn = document.getElementById('debugBtn');
-                    const container = document.querySelector('.container');
-                    
-                    if (debugMode) {
-                        panel.style.display = 'block';
-                        btn.innerText = '⏹️ Debug Durdur';
-                        container.classList.add('full-width');
-                        startDebugMonitor();
-                    } else {
-                        panel.style.display = 'none';
-                        btn.innerText = '🔧 Debug Tool';
-                        container.classList.remove('full-width');
-                        stopDebugMonitor();
-                    }
+                    alert('Debug tool coming soon!');
                 }
                 
-                function startDebugMonitor() {
-                    const log = document.getElementById('debugLog');
-                    log.innerHTML = '<div style="color: #4CAF50;">✅ Debug monitör başlatıldı - Ağ dinleniyor...</div>';
-                    
-                    // Start backend UDP listener
-                    fetch('/api/debug/start', { method: 'POST' })
-                        .then(r => r.json())
-                        .then(data => {
-                            console.log('Debug listener started:', data.message);
-                        })
-                        .catch(e => console.error('Debug start error:', e));
-                    
-                    // Start polling for debug messages
-                    debugSocket = setInterval(async () => {
-                        try {
-                            const response = await fetch('/api/debug/messages');
-                            const messages = await response.json();
-                            
-                            messages.forEach(msg => {
-                                addDebugLog(msg.type, msg.data, msg.timestamp);
-                            });
-                        } catch (e) {
-                            // Ignore errors during polling
-                        }
-                    }, 500);  // Poll faster for real-time updates
-                }
-                
-                function stopDebugMonitor() {
-                    if (debugSocket) {
-                        clearInterval(debugSocket);
-                        debugSocket = null;
-                    }
-                    
-                    // Stop backend UDP listener
-                    fetch('/api/debug/stop', { method: 'POST' })
-                        .then(r => r.json())
-                        .then(data => {
-                            console.log('Debug listener stopped:', data.message);
-                        })
-                        .catch(e => console.error('Debug stop error:', e));
-                }
-                
-                function addDebugLog(type, data, timestamp) {
-                    const log = document.getElementById('debugLog');
-                    const time = new Date(timestamp || Date.now()).toLocaleTimeString();
-                    
-                    const typeClass = type === 'send' ? 'send' : type === 'receive' ? 'receive' : 'error';
-                    const typeIcon = type === 'send' ? '📤' : type === 'receive' ? '📥' : '❌';
-                    const typeLabel = type === 'send' ? 'GÖNDER' : type === 'receive' ? 'AL' : 'HATA';
-                    
-                    const logEntry = document.createElement('div');
-                    logEntry.className = `debug-log ${typeClass}`;
-                    logEntry.innerHTML = `
-                        <div style="display: flex; justify-content: space-between;">
-                            <strong>${typeIcon} ${typeLabel}</strong>
-                            <span class="debug-time">${time}</span>
-                        </div>
-                        <div class="debug-data">${data}</div>
-                    `;
-                    
-                    log.appendChild(logEntry);
-                    log.scrollTop = log.scrollHeight;
-                }
-                
-                function clearDebugLog() {
-                    const log = document.getElementById('debugLog');
-                    log.innerHTML = '<div style="color: #858585; text-align: center; padding: 20px;">Log temizlendi...</div>';
+                function refreshTable() {
+                    scanDevices();
                 }
                 
                 async function scanDevices() {
                     const btn = document.getElementById('scanBtn');
-                    const status = document.getElementById('status');
-                    const container = document.getElementById('devicesContainer');
+                    const statusText = document.getElementById('statusText');
+                    const tableBody = document.getElementById('devicesTableBody');
                     const gatewayWarning = document.getElementById('gatewayWarning');
                     
-                    // Gateway IP kontrolü - API'den al
+                    // Gateway IP kontrolü
                     if (!currentGatewayIP || currentGatewayIP === '0.0.0.0') {
-                        status.innerText = '⚠️ Gateway IP yapılandırılmamış! Lütfen addon ayarlarını kontrol edin.';
-                        status.style.background = '#ffebee';
-                        status.style.borderColor = '#f44336';
-                        status.style.color = '#c62828';
+                        statusText.innerText = '⚠️ Gateway IP not configured!';
                         gatewayWarning.style.display = 'block';
                         return;
                     }
                     
-                    // Uyarıyı kapat
                     gatewayWarning.style.display = 'none';
-                    status.style.background = '#e3f2fd';
-                    status.style.borderColor = '#2196f3';
-                    status.style.color = '#1976d2';
                     
                     btn.disabled = true;
-                    btn.innerText = "⏳ Taranıyor...";
-                    status.innerText = "Ağ taranıyor, lütfen bekleyin...";
-                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⏳</div><p>Ağ taranıyor...</p></div>';
+                    btn.innerText = "⏳ Scanning...";
+                    statusText.innerText = "Scanning network, please wait...";
+                    tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;"><div style="font-size: 32px;">⏳</div><div>Scanning network...</div></td></tr>';
                     
                     try {
                         const response = await fetch('/api/devices?gateway=' + encodeURIComponent(currentGatewayIP));
                         const devices = await response.json();
                         
-                        status.innerText = `✅ Tarama tamamlandı: ${devices.length} cihaz bulundu`;
+                        statusText.innerText = `✅ Scan completed: ${devices.length} device(s) found`;
+                        document.getElementById('deviceCount').innerText = `Total Devices: ${devices.length}`;
                         
                         if (devices.length === 0) {
-                            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">❌</div><p>Hiç cihaz bulunamadı</p></div>';
+                            tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 60px; color: #999;"><div style="font-size: 48px; margin-bottom: 15px;">❌</div><div>No devices found</div></td></tr>';
                         } else {
-                            container.innerHTML = '';
+                            tableBody.innerHTML = '';
                             devices.forEach(dev => {
-                                const card = createDeviceCard(dev);
-                                container.innerHTML += card;
+                                const row = createDeviceRow(dev);
+                                tableBody.innerHTML += row;
                             });
                         }
                     } catch (e) {
-                        status.innerText = "❌ Hata: " + e.message;
-                        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><p>Hata oluştu: ${e.message}</p></div>`;
+                        statusText.innerText = "❌ Error: " + e.message;
+                        tableBody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 60px; color: #f44336;"><div style="font-size: 48px; margin-bottom: 15px;">⚠️</div><div>Error: ${e.message}</div></td></tr>`;
                     } finally {
                         btn.disabled = false;
-                        btn.innerText = "🔍 Cihazları Tara";
+                        btn.innerText = "🔍 Scan Network";
                     }
                 }
 
-                function createDeviceCard(dev) {
-                    const icon = getDeviceIcon(dev.model_name);
+                function createDeviceRow(dev) {
                     const addedClass = dev.is_added ? 'added' : '';
+                    const statusIcon = dev.is_added ? '<span class="status-icon added">✓</span>' : '';
                     
                     // Eklenmiş cihazlar için Sil butonu, eklenmemişler için Ekle butonu
-                    let actionButton = '';
+                    let actionButtons = '';
                     if (dev.is_added) {
-                        actionButton = `
-                            <button class="btn-control btn-remove" 
-                                    onclick="removeDevice(${dev.subnet}, ${dev.device}, '${dev.name}')">
-                                🗑️ Sil
-                            </button>
+                        actionButtons = `
+                            <div class="table-actions">
+                                <button class="btn-on" onclick="controlDevice(${dev.subnet}, ${dev.device}, 1, 0)">ON</button>
+                                <button class="btn-off" onclick="controlDevice(${dev.subnet}, ${dev.device}, 0, 0)">OFF</button>
+                                <button class="btn-remove" onclick="removeDevice(${dev.subnet}, ${dev.device}, '${dev.name}')">Remove</button>
+                            </div>
                         `;
                     } else {
-                        actionButton = `
-                            <button class="btn-control btn-add" 
-                                    onclick="addDevice(${dev.subnet}, ${dev.device}, '${dev.model_name}', ${dev.channels}, '${dev.name}')">
-                                ➕ Ekle
-                            </button>
+                        actionButtons = `
+                            <div class="table-actions">
+                                <button class="btn-on" onclick="controlDevice(${dev.subnet}, ${dev.device}, 1, 0)">ON</button>
+                                <button class="btn-off" onclick="controlDevice(${dev.subnet}, ${dev.device}, 0, 0)">OFF</button>
+                                <button class="btn-add" onclick="addDevice(${dev.subnet}, ${dev.device}, '${dev.model_name}', ${dev.channels}, '${dev.name}')">Add</button>
+                            </div>
                         `;
                     }
                     
                     return `
-                        <div class="device-card ${addedClass}" data-subnet="${dev.subnet}" data-device="${dev.device}">
-                            <div class="device-header">
-                                <div class="device-name">${dev.name}</div>
-                                <div class="device-icon">${icon}</div>
-                            </div>
-                            <div class="device-info">
-                                <strong>IP:</strong> ${dev.host}<br>
-                                <strong>Model:</strong> ${dev.model_name}<br>
-                                <strong>Subnet/Device:</strong> ${dev.subnet}/${dev.device}<br>
-                                <strong>Kanallar:</strong> ${dev.channels}
-                            </div>
-                            <div class="device-controls">
-                                <button class="btn-control btn-on" onclick="controlDevice(${dev.subnet}, ${dev.device}, 1, 0)">
-                                    💡 Aç
-                                </button>
-                                <button class="btn-control btn-off" onclick="controlDevice(${dev.subnet}, ${dev.device}, 0, 0)">
-                                    🌙 Kapat
-                                </button>
-                                ${actionButton}
-                            </div>
-                        </div>
+                        <tr class="${addedClass}" data-subnet="${dev.subnet}" data-device="${dev.device}">
+                            <td class="center">${statusIcon}</td>
+                            <td>${dev.subnet}</td>
+                            <td>${dev.device}</td>
+                            <td>${dev.model_name}</td>
+                            <td>${dev.host}</td>
+                            <td class="center">${dev.channels}</td>
+                            <td>${dev.name}</td>
+                            <td>${actionButtons}</td>
+                        </tr>
                     `;
-                }
-
-                function getDeviceIcon(modelName) {
-                    const model = modelName.toLowerCase();
-                    if (model.includes('dimmer') || model.includes('led')) return '💡';
-                    if (model.includes('rgb')) return '🌈';
-                    if (model.includes('curtain') || model.includes('perde')) return '🪟';
-                    if (model.includes('thermo')) return '🌡️';
+                }                    if (model.includes('thermo')) return '🌡️';
                     if (model.includes('sensor')) return '📡';
                     if (model.includes('relay') || model.includes('röle')) return '🔌';
                     return '📱';
@@ -633,24 +517,24 @@ class TISWebUI:
                         
                         const result = await response.json();
                         if (result.success) {
-                            document.getElementById('status').innerText = `✅ Komut gönderildi: Subnet ${subnet}, Device ${deviceId}`;
+                            document.getElementById('statusText').innerText = `✅ Command sent to ${subnet}.${deviceId}`;
                         } else {
-                            alert('Hata: ' + result.message);
+                            alert('Error: ' + result.message);
                         }
                     } catch (err) {
-                        alert('Hata: ' + err.message);
+                        alert('Error: ' + err.message);
                     }
                 }
 
                 async function addDevice(subnet, deviceId, modelName, channels, deviceName) {
-                    if (!confirm(`Cihazı Home Assistant'a eklemek istiyor musunuz?\\n\\n${deviceName}`)) {
+                    if (!confirm(`Add device to Home Assistant?\\n\\n${deviceName}`)) {
                         return;
                     }
 
                     try {
-                        // Önce cihaza discovery mesajı gönder (model/kanal bilgisi için)
-                        document.getElementById('status').innerText = `🔍 Cihaz bilgileri sorgulanıyor: ${deviceName}...`;
+                        document.getElementById('statusText').innerText = `🔍 Querying device: ${deviceName}...`;
                         
+                        // Query device first
                         const queryResponse = await fetch('/api/query_device', {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
@@ -662,10 +546,10 @@ class TISWebUI:
                         
                         const queryResult = await queryResponse.json();
                         if (!queryResult.success) {
-                            console.warn('Cihaz bilgileri alınamadı:', queryResult.message);
+                            console.warn('Device query failed:', queryResult.message);
                         }
                         
-                        // Şimdi cihazı ekle
+                        // Add device
                         const response = await fetch('/api/add_device', {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
@@ -680,35 +564,34 @@ class TISWebUI:
                         
                         const result = await response.json();
                         if (result.success) {
-                            alert('✅ Cihaz başarıyla eklendi!\\n\\n' + result.message);
-                            document.getElementById('status').innerText = '✅ ' + result.message;
-                            // UI'daki kartı güncelle (data-attribute ile bul)
-                            const card = document.querySelector(`.device-card[data-subnet="${subnet}"][data-device="${deviceId}"]`);
-                            if (card) {
-                                const controls = card.querySelector('.device-controls');
-                                if (controls) {
-                                    // Escape device name for JavaScript
-                                    const safeName = deviceName.replace(/'/g, "\\\\'");
-                                    controls.innerHTML = `
-                                        <button class="btn-control btn-on" onclick="controlDevice(${subnet}, ${deviceId}, 1, 0)">💡 Aç</button>
-                                        <button class="btn-control btn-off" onclick="controlDevice(${subnet}, ${deviceId}, 0, 0)">🌙 Kapat</button>
-                                        <button class="btn-control btn-remove" onclick="removeDevice(${subnet}, ${deviceId}, '${safeName}')">🗑️ Sil</button>
-                                    `;
-                                    card.classList.add('added');
-                                }
-                            } else {
-                                console.error('Card not found for subnet=' + subnet + ', device=' + deviceId);
+                            alert('✅ Device added successfully!\\n\\n' + result.message);
+                            document.getElementById('statusText').innerText = '✅ ' + result.message;
+                            // Update table row
+                            const row = document.querySelector(`tr[data-subnet="${subnet}"][data-device="${deviceId}"]`);
+                            if (row) {
+                                row.classList.add('added');
+                                const statusCell = row.querySelector('td:first-child');
+                                statusCell.innerHTML = '<span class="status-icon added">✓</span>';
+                                const actionsCell = row.querySelector('td:last-child');
+                                const safeName = deviceName.replace(/'/g, "\\\\'");
+                                actionsCell.innerHTML = `
+                                    <div class="table-actions">
+                                        <button class="btn-on" onclick="controlDevice(${subnet}, ${deviceId}, 1, 0)">ON</button>
+                                        <button class="btn-off" onclick="controlDevice(${subnet}, ${deviceId}, 0, 0)">OFF</button>
+                                        <button class="btn-remove" onclick="removeDevice(${subnet}, ${deviceId}, '${safeName}')">Remove</button>
+                                    </div>
+                                `;
                             }
                         } else {
-                            alert('❌ Hata: ' + result.message);
+                            alert('❌ Error: ' + result.message);
                         }
                     } catch (err) {
-                        alert('❌ Hata: ' + err.message);
+                        alert('❌ Error: ' + err.message);
                     }
                 }
 
                 async function removeDevice(subnet, deviceId, deviceName) {
-                    if (!confirm(`"${deviceName}" cihazını silmek istediğinizden emin misiniz?\\n\\nBu işlem cihazı Home Assistant'tan tamamen kaldıracaktır.`)) {
+                    if (!confirm(`Remove device "${deviceName}"?\\n\\nThis will remove the device from Home Assistant.`)) {
                         return;
                     }
                     
@@ -726,30 +609,32 @@ class TISWebUI:
                         
                         const result = await response.json();
                         if (result.success) {
-                            alert('✅ Cihaz başarıyla silindi!\\n\\n' + result.message);
-                            document.getElementById('status').innerText = '✅ ' + result.message;
-                            // Kartı yok etme, sadece "added" class'ını kaldır ve butonları resetle
-                            const card = document.querySelector(`.device-card[data-subnet="${subnet}"][data-device="${deviceId}"]`);
-                            if (card) {
-                                card.classList.remove('added');
-                                const controls = card.querySelector('.device-controls');
-                                if (controls) {
-                                    const safeName = deviceName.replace(/'/g, "\\\\'");
-                                    // Model ve channel bilgisini card'dan al
-                                    const modelName = card.querySelector('.device-info').textContent.match(/Model:\\s*([^\\n]+)/)?.[1] || 'Unknown';
-                                    const channels = card.querySelector('.device-info').textContent.match(/Kanallar:\\s*(\\d+)/)?.[1] || '1';
-                                    controls.innerHTML = `
-                                        <button class="btn-control btn-on" onclick="controlDevice(${subnet}, ${deviceId}, 1, 0)">💡 Aç</button>
-                                        <button class="btn-control btn-off" onclick="controlDevice(${subnet}, ${deviceId}, 0, 0)">🌙 Kapat</button>
-                                        <button class="btn-control btn-add" onclick="addDevice(${subnet}, ${deviceId}, '${modelName}', ${channels}, '${safeName}')">➕ Ekle</button>
-                                    `;
-                                }
+                            alert('✅ Device removed successfully!\\n\\n' + result.message);
+                            document.getElementById('statusText').innerText = '✅ ' + result.message;
+                            // Update table row
+                            const row = document.querySelector(`tr[data-subnet="${subnet}"][data-device="${deviceId}"]`);
+                            if (row) {
+                                row.classList.remove('added');
+                                const statusCell = row.querySelector('td:first-child');
+                                statusCell.innerHTML = '';
+                                const actionsCell = row.querySelector('td:last-child');
+                                const safeName = deviceName.replace(/'/g, "\\\\'");
+                                // Get model and channels from row
+                                const modelName = row.cells[3].textContent;
+                                const channels = row.cells[5].textContent;
+                                actionsCell.innerHTML = `
+                                    <div class="table-actions">
+                                        <button class="btn-on" onclick="controlDevice(${subnet}, ${deviceId}, 1, 0)">ON</button>
+                                        <button class="btn-off" onclick="controlDevice(${subnet}, ${deviceId}, 0, 0)">OFF</button>
+                                        <button class="btn-add" onclick="addDevice(${subnet}, ${deviceId}, '${modelName}', ${channels}, '${safeName}')">Add</button>
+                                    </div>
+                                `;
                             }
                         } else {
-                            alert('❌ Hata: ' + result.message);
+                            alert('❌ Error: ' + result.message);
                         }
                     } catch (err) {
-                        alert('❌ Hata: ' + err.message);
+                        alert('❌ Error: ' + err.message);
                     }
                 }
             </script>
