@@ -180,3 +180,97 @@ def _run_discovery(udp_port: int = 6000) -> Dict[str, Dict[str, Any]]:
     
     _LOGGER.info(f"Discovery complete: {len(discovered)} devices found")
     return discovered
+
+
+class TISDiscovery:
+    """TIS Discovery with real-time callback support."""
+    
+    def __init__(self, gateway_ip: str, udp_port: int = 6000):
+        self.gateway_ip = gateway_ip
+        self.udp_port = udp_port
+    
+    async def discover_with_callback(self, on_device_found):
+        """Discover devices and call callback for each device found."""
+        import asyncio
+        loop = asyncio.get_event_loop()
+        
+        discovered = {}
+        
+        def discovery_worker():
+            sock = None
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+                sock.settimeout(0.5)
+                sock.bind(('', self.udp_port))
+                
+                local_ip = get_local_ip()
+                ip_bytes = bytes([int(x) for x in local_ip.split('.')])
+                smartcloud_header = b'SMARTCLOUD'
+                
+                for i in range(DISCOVERY_RETRIES):
+                    packet = TISPacket()
+                    packet.op_code = DISCOVERY_OP_CODE
+                    packet.tgt_subnet = 255
+                    packet.tgt_device = 255
+                    tis_data = packet.build()
+                    data = ip_bytes + smartcloud_header + tis_data
+                    sock.sendto(data, ('255.255.255.255', self.udp_port))
+                    
+                    sub_end_time = time.time() + DISCOVERY_INTERVAL
+                    while time.time() < sub_end_time:
+                        try:
+                            data, addr = sock.recvfrom(4096)
+                            ip = addr[0]
+                            
+                            if len(data) > 14 and data[4:14] == b'SMARTCLOUD':
+                                data = data[14:]
+                            
+                            parsed = TISPacket.parse(data)
+                            if parsed:
+                                subnet = parsed['src_subnet']
+                                device_id = parsed['src_device']
+                                unique_id = f"tis_{subnet}_{device_id}"
+                                
+                                device_type_id = parsed['src_type']
+                                model_name, channels = get_device_info(device_type_id)
+                                
+                                if model_name == "Unknown Device" or device_type_id == 0xFFFE:
+                                    continue
+                                
+                                if unique_id not in discovered:
+                                    device_info = {
+                                        "host": ip,
+                                        "subnet": subnet,
+                                        "device": device_id,
+                                        "device_type": device_type_id,
+                                        "device_type_hex": f"0x{device_type_id:04X}",
+                                        "model_name": model_name,
+                                        "channels": channels,
+                                        "name": f"{model_name} ({subnet}.{device_id})",
+                                    }
+                                    discovered[unique_id] = device_info
+                                    
+                                    # Trigger callback immediately
+                                    asyncio.run_coroutine_threadsafe(
+                                        on_device_found(device_info), 
+                                        loop
+                                    )
+                                    
+                        except socket.timeout:
+                            continue
+                        except Exception as e:
+                            _LOGGER.error(f"Socket error: {e}")
+                
+            except Exception as e:
+                _LOGGER.error(f"Discovery error: {e}")
+            finally:
+                if sock:
+                    sock.close()
+            
+            return discovered
+        
+        # Run in executor to not block event loop
+        return await loop.run_in_executor(None, discovery_worker)
+

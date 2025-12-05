@@ -24,6 +24,7 @@ class TISWebUI:
         self.app.router.add_get('/', self.handle_index)
         self.app.router.add_get('/api/info', self.handle_info)
         self.app.router.add_get('/api/devices', self.handle_devices)
+        self.app.router.add_get('/api/devices/stream', self.handle_devices_stream)
         self.app.router.add_post('/api/control', self.handle_control)
         self.app.router.add_post('/api/query_device', self.handle_query_device)
         self.app.router.add_post('/api/add_device', self.handle_add_device)
@@ -442,35 +443,58 @@ class TISWebUI:
                     statusText.innerText = "Scanning network, please wait...";
                     tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;"><div style="font-size: 32px;">⏳</div><div>Scanning network...</div></td></tr>';
                     
-                    console.log('Fetching devices from API...');
+                    console.log('Starting SSE stream...');
+                    
+                    let deviceCount = 0;
                     
                     try {
-                        const response = await fetch('/api/devices?gateway=' + encodeURIComponent(currentGatewayIP));
-                        console.log('API response status:', response.status);
-                        const devices = await response.json();
-                        console.log('Devices found:', devices.length, devices);
+                        const eventSource = new EventSource('/api/devices/stream?gateway=' + encodeURIComponent(currentGatewayIP));
                         
-                        statusText.innerText = `✅ Scan completed: ${devices.length} device(s) found`;
-                        document.getElementById('deviceCount').innerText = `Total Devices: ${devices.length}`;
-                        
-                        if (devices.length === 0) {
-                            tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 60px; color: #999;"><div style="font-size: 48px; margin-bottom: 15px;">❌</div><div>No devices found</div></td></tr>';
-                        } else {
+                        eventSource.addEventListener('start', (e) => {
+                            console.log('Stream started');
                             tableBody.innerHTML = '';
-                            devices.forEach(dev => {
-                                console.log('Creating row for device:', dev);
-                                const row = createDeviceRow(dev);
-                                tableBody.innerHTML += row;
-                            });
-                        }
+                        });
+                        
+                        eventSource.addEventListener('device', (e) => {
+                            const device = JSON.parse(e.data);
+                            console.log('Device found:', device);
+                            deviceCount++;
+                            
+                            // Tabloya hemen ekle
+                            const row = createDeviceRow(device);
+                            tableBody.innerHTML += row;
+                            
+                            statusText.innerText = `🔍 Scanning... (${deviceCount} device(s) found)`;
+                            document.getElementById('deviceCount').innerText = `Total Devices: ${deviceCount}`;
+                        });
+                        
+                        eventSource.addEventListener('complete', (e) => {
+                            console.log('Scan completed');
+                            statusText.innerText = `✅ Scan completed: ${deviceCount} device(s) found`;
+                            
+                            if (deviceCount === 0) {
+                                tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 60px; color: #999;"><div style="font-size: 48px; margin-bottom: 15px;">❌</div><div>No devices found</div></td></tr>';
+                            }
+                            
+                            eventSource.close();
+                            btn.disabled = false;
+                            btn.innerText = "🔍 Scan Network";
+                        });
+                        
+                        eventSource.onerror = (e) => {
+                            console.error('SSE error:', e);
+                            statusText.innerText = "❌ Error during scan";
+                            eventSource.close();
+                            btn.disabled = false;
+                            btn.innerText = "🔍 Scan Network";
+                        };
+                        
                     } catch (e) {
                         console.error('Scan error:', e);
                         statusText.innerText = "❌ Error: " + e.message;
                         tableBody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 60px; color: #f44336;"><div style="font-size: 48px; margin-bottom: 15px;">⚠️</div><div>Error: ${e.message}</div></td></tr>`;
-                    } finally {
                         btn.disabled = false;
                         btn.innerText = "🔍 Scan Network";
-                        console.log('Scan completed');
                     }
                 }
 
@@ -718,6 +742,59 @@ class TISWebUI:
             devices_list.append(device)
         
         return web.json_response(devices_list)
+
+    async def handle_devices_stream(self, request):
+        """Handle device discovery with real-time streaming."""
+        response = web.StreamResponse(
+            status=200,
+            reason='OK',
+            headers={
+                'Content-Type': 'text/event-stream',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+            },
+        )
+        await response.prepare(request)
+        
+        gateway_ip = request.query.get('gateway', self.gateway_ip)
+        
+        # Load already added devices
+        added_devices = set()
+        try:
+            with open('/config/tis_devices.json', 'r') as f:
+                existing_devices = json.load(f)
+                added_devices = set(existing_devices.keys())
+        except:
+            pass
+        
+        # Send start event
+        await response.write(b'event: start\n')
+        await response.write(f'data: {{"message": "Scanning network..."}}}\n\n'.encode())
+        
+        # Discover devices with callback for each device found
+        from discovery import TISDiscovery
+        discovery = TISDiscovery(gateway_ip, self.udp_port)
+        
+        async def on_device_found(device):
+            # Mark if already added
+            subnet = device.get('subnet')
+            device_id = device.get('device')
+            unique_id = f"tis_{subnet}_{device_id}"
+            device['is_added'] = unique_id in added_devices
+            
+            # Send device event immediately
+            device_json = json.dumps(device)
+            await response.write(b'event: device\n')
+            await response.write(f'data: {device_json}\n\n'.encode())
+        
+        # Run discovery with callback
+        devices = await discovery.discover_with_callback(on_device_found)
+        
+        # Send completion event
+        await response.write(b'event: complete\n')
+        await response.write(f'data: {{"count": {len(devices)}}}}\n\n'.encode())
+        
+        return response
 
     async def handle_control(self, request):
         """Handle device control request."""
