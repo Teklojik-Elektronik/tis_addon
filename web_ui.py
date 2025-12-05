@@ -343,7 +343,7 @@ class TISWebUI:
                 
                 <!-- Toolbar -->
                 <div class="toolbar">
-                    <button id="scanBtn" class="primary" onclick="scanDevices()">🔍 Scan Network</button>
+                    <button id="scanBtn" class="primary" onclick="try { scanDevices(); } catch(e) { alert('JavaScript Error: ' + e.message); console.error('Button click error:', e); }">🔍 Scan Network</button>
                     <button onclick="refreshTable()">🔄 Refresh</button>
                     <button onclick="toggleDebug()">🔧 Debug Tool</button>
                 </div>
@@ -393,10 +393,12 @@ class TISWebUI:
                 
                 // Sayfa yüklendiğinde gateway IP kontrolü
                 window.addEventListener('DOMContentLoaded', async function() {
+                    console.log('Page loaded, fetching gateway info...');
                     try {
                         const response = await fetch('/api/info');
                         const data = await response.json();
                         currentGatewayIP = data.gateway_ip || '';
+                        console.log('Gateway IP:', currentGatewayIP);
                         
                         // Gateway IP yoksa veya 0.0.0.0 ise uyarı göster
                         if (!currentGatewayIP || currentGatewayIP === '0.0.0.0') {
@@ -412,17 +414,22 @@ class TISWebUI:
                 }
                 
                 function refreshTable() {
+                    console.log('Refresh clicked');
                     scanDevices();
                 }
                 
                 async function scanDevices() {
+                    console.log('scanDevices() called');
                     const btn = document.getElementById('scanBtn');
                     const statusText = document.getElementById('statusText');
                     const tableBody = document.getElementById('devicesTableBody');
                     const gatewayWarning = document.getElementById('gatewayWarning');
                     
+                    console.log('Current Gateway IP:', currentGatewayIP);
+                    
                     // Gateway IP kontrolü
                     if (!currentGatewayIP || currentGatewayIP === '0.0.0.0') {
+                        console.warn('Gateway IP not configured');
                         statusText.innerText = '⚠️ Gateway IP not configured!';
                         gatewayWarning.style.display = 'block';
                         return;
@@ -435,9 +442,13 @@ class TISWebUI:
                     statusText.innerText = "Scanning network, please wait...";
                     tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;"><div style="font-size: 32px;">⏳</div><div>Scanning network...</div></td></tr>';
                     
+                    console.log('Fetching devices from API...');
+                    
                     try {
                         const response = await fetch('/api/devices?gateway=' + encodeURIComponent(currentGatewayIP));
+                        console.log('API response status:', response.status);
                         const devices = await response.json();
+                        console.log('Devices found:', devices.length, devices);
                         
                         statusText.innerText = `✅ Scan completed: ${devices.length} device(s) found`;
                         document.getElementById('deviceCount').innerText = `Total Devices: ${devices.length}`;
@@ -447,16 +458,19 @@ class TISWebUI:
                         } else {
                             tableBody.innerHTML = '';
                             devices.forEach(dev => {
+                                console.log('Creating row for device:', dev);
                                 const row = createDeviceRow(dev);
                                 tableBody.innerHTML += row;
                             });
                         }
                     } catch (e) {
+                        console.error('Scan error:', e);
                         statusText.innerText = "❌ Error: " + e.message;
                         tableBody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 60px; color: #f44336;"><div style="font-size: 48px; margin-bottom: 15px;">⚠️</div><div>Error: ${e.message}</div></td></tr>`;
                     } finally {
                         btn.disabled = false;
                         btn.innerText = "🔍 Scan Network";
+                        console.log('Scan completed');
                     }
                 }
 
@@ -496,10 +510,6 @@ class TISWebUI:
                             <td>${actionButtons}</td>
                         </tr>
                     `;
-                }                    if (model.includes('thermo')) return '🌡️';
-                    if (model.includes('sensor')) return '📡';
-                    if (model.includes('relay') || model.includes('röle')) return '🔌';
-                    return '📱';
                 }
 
                 async function controlDevice(subnet, deviceId, state, channel) {
