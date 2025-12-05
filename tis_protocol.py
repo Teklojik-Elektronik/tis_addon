@@ -178,16 +178,21 @@ class TISUDPClient:
         self.sock = None
         self.is_connected = False
         
-    async def async_connect(self) -> bool:
-        """UDP socket aç"""
+    async def async_connect(self, bind: bool = True) -> bool:
+        """UDP socket aç - bind=True: port'a bağlan (yanıt almak için), bind=False: sadece gönder"""
         try:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
             self.sock.settimeout(1.0)
-            self.sock.bind(('', self.port))
+            
+            if bind:
+                self.sock.bind(('', self.port))
+                _LOGGER.info(f"TIS UDP client başlatıldı (port {self.port} - listening)")
+            else:
+                _LOGGER.info(f"TIS UDP client başlatıldı (send only)")
+            
             self.is_connected = True
-            _LOGGER.info(f"TIS UDP client başlatıldı (port {self.port})")
             return True
         except Exception as e:
             _LOGGER.error(f"UDP socket açma hatası: {e}")

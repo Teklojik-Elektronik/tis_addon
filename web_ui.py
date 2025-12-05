@@ -8,7 +8,7 @@ import socket
 import time
 from aiohttp import web
 from discovery import discover_tis_devices, get_local_ip
-from tis_protocol import TISProtocol, TISPacket
+from tis_protocol import TISProtocol, TISPacket, TISUDPClient
 
 _LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -25,6 +25,7 @@ class TISWebUI:
         self.app.router.add_get('/api/info', self.handle_info)
         self.app.router.add_get('/api/devices', self.handle_devices)
         self.app.router.add_post('/api/control', self.handle_control)
+        self.app.router.add_post('/api/query_device', self.handle_query_device)
         self.app.router.add_post('/api/add_device', self.handle_add_device)
         self.app.router.add_post('/api/remove_device', self.handle_remove_device)
         self.app.router.add_get('/api/debug/messages', self.handle_debug_messages)
@@ -528,6 +529,24 @@ class TISWebUI:
                     }
 
                     try {
+                        // Önce cihaza discovery mesajı gönder (model/kanal bilgisi için)
+                        document.getElementById('status').innerText = `🔍 Cihaz bilgileri sorgulanıyor: ${deviceName}...`;
+                        
+                        const queryResponse = await fetch('/api/query_device', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                subnet: subnet,
+                                device_id: deviceId
+                            })
+                        });
+                        
+                        const queryResult = await queryResponse.json();
+                        if (!queryResult.success) {
+                            console.warn('Cihaz bilgileri alınamadı:', queryResult.message);
+                        }
+                        
+                        // Şimdi cihazı ekle
                         const response = await fetch('/api/add_device', {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
@@ -590,10 +609,22 @@ class TISWebUI:
                         if (result.success) {
                             alert('✅ Cihaz başarıyla silindi!\\n\\n' + result.message);
                             document.getElementById('status').innerText = '✅ ' + result.message;
-                            // UI'dan cihaz kartını kaldır (data-attribute ile bul)
+                            // Kartı yok etme, sadece "added" class'ını kaldır ve butonları resetle
                             const card = document.querySelector(`.device-card[data-subnet="${subnet}"][data-device="${deviceId}"]`);
                             if (card) {
-                                card.remove();
+                                card.classList.remove('added');
+                                const controls = card.querySelector('.device-controls');
+                                if (controls) {
+                                    const safeName = deviceName.replace(/'/g, "\\\\'");
+                                    // Model ve channel bilgisini card'dan al
+                                    const modelName = card.querySelector('.device-info').textContent.match(/Model:\\s*([^\\n]+)/)?.[1] || 'Unknown';
+                                    const channels = card.querySelector('.device-info').textContent.match(/Kanallar:\\s*(\\d+)/)?.[1] || '1';
+                                    controls.innerHTML = `
+                                        <button class="btn-control btn-on" onclick="controlDevice(${subnet}, ${deviceId}, 1, 0)">💡 Aç</button>
+                                        <button class="btn-control btn-off" onclick="controlDevice(${subnet}, ${deviceId}, 0, 0)">🌙 Kapat</button>
+                                        <button class="btn-control btn-add" onclick="addDevice(${subnet}, ${deviceId}, '${modelName}', ${channels}, '${safeName}')">➕ Ekle</button>
+                                    `;
+                                }
                             }
                         } else {
                             alert('❌ Hata: ' + result.message);
@@ -706,6 +737,60 @@ class TISWebUI:
             return web.json_response({'success': True})
         except Exception as e:
             _LOGGER.error(f"Control error: {e}")
+            return web.json_response({'success': False, 'message': str(e)}, status=500)
+
+    async def handle_query_device(self, request):
+        """Query device information (model, channels) by sending discovery messages."""
+        try:
+            data = await request.json()
+            subnet = data.get('subnet')
+            device_id = data.get('device_id')
+
+            if subnet is None or device_id is None:
+                return web.json_response({'success': False, 'message': 'Eksik parametreler'}, status=400)
+
+            _LOGGER.info(f"🔍 Querying device info: {subnet}.{device_id}")
+
+            # Send OpCode 0xEFFD (Model query) and 0x0003 (Device type query)
+            client = TISUDPClient(self.gateway_ip, self.udp_port)
+            await client.async_connect(bind=False)  # Send only, no need to bind
+            
+            # OpCode 0xEFFD: Model query
+            packet_effd = TISPacket.build({
+                'op_code': 0xEFFD,
+                'src_subnet': 0,
+                'src_device': 0,
+                'src_type': 0,
+                'tgt_subnet': subnet,
+                'tgt_device': device_id,
+                'tgt_type': 0,
+                'additional_data': b''
+            })
+            await client.async_send_packet(packet_effd)
+            _LOGGER.debug(f"Sent OpCode 0xEFFD (Model query) to {subnet}.{device_id}")
+            
+            # OpCode 0x0003: Device type query
+            packet_0003 = TISPacket.build({
+                'op_code': 0x0003,
+                'src_subnet': 0,
+                'src_device': 0,
+                'src_type': 0,
+                'tgt_subnet': subnet,
+                'tgt_device': device_id,
+                'tgt_type': 0,
+                'additional_data': b''
+            })
+            await client.async_send_packet(packet_0003)
+            _LOGGER.debug(f"Sent OpCode 0x0003 (Device type query) to {subnet}.{device_id}")
+            
+            await client.async_disconnect()
+            
+            return web.json_response({
+                'success': True,
+                'message': f'Discovery messages sent to {subnet}.{device_id}'
+            })
+        except Exception as e:
+            _LOGGER.error(f"Query device error: {e}")
             return web.json_response({'success': False, 'message': str(e)}, status=500)
 
     async def handle_debug_messages(self, request):
