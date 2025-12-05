@@ -292,6 +292,16 @@ class TISWebUI:
                     </div>
                 </header>
                 
+                <div id="gatewayWarning" style="display: none; background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 24px;">⚠️</span>
+                        <div style="flex: 1;">
+                            <strong>Gateway IP Ayarlanmadı!</strong><br>
+                            <span style="font-size: 14px; color: #856404;">Yukarıdaki alana gateway IP adresini girin (örn: 192.168.1.200) ve "Cihazları Tara" butonuna basın.</span>
+                        </div>
+                    </div>
+                </div>
+                
                 <div id="status" class="status">Hazır - Cihazları taramak için butona basın</div>
                 
                 <div id="debugPanel" class="debug-panel" style="display: none;">
@@ -316,6 +326,26 @@ class TISWebUI:
             <script>
                 let debugMode = false;
                 let debugSocket = null;
+                let currentGatewayIP = '';
+                
+                // Sayfa yüklendiğinde gateway IP kontrolü
+                window.addEventListener('DOMContentLoaded', async function() {
+                    try {
+                        const response = await fetch('/api/info');
+                        const data = await response.json();
+                        currentGatewayIP = data.gateway_ip || '';
+                        
+                        // Gateway input'a mevcut IP'yi yaz
+                        document.getElementById('gatewayInput').value = currentGatewayIP === '0.0.0.0' ? '' : currentGatewayIP;
+                        
+                        // Gateway IP yoksa veya 0.0.0.0 ise uyarı göster
+                        if (!currentGatewayIP || currentGatewayIP === '0.0.0.0') {
+                            document.getElementById('gatewayWarning').style.display = 'block';
+                        }
+                    } catch (e) {
+                        console.error('Gateway IP alınamadı:', e);
+                    }
+                });
                 
                 function toggleDebug() {
                     debugMode = !debugMode;
@@ -410,6 +440,24 @@ class TISWebUI:
                     const status = document.getElementById('status');
                     const container = document.getElementById('devicesContainer');
                     const gatewayInput = document.getElementById('gatewayInput');
+                    const gatewayWarning = document.getElementById('gatewayWarning');
+                    
+                    // Gateway IP kontrolü
+                    const gatewayIP = gatewayInput.value.trim();
+                    if (!gatewayIP || gatewayIP === '0.0.0.0') {
+                        status.innerText = '⚠️ Lütfen önce Gateway IP adresini girin!';
+                        status.style.background = '#ffebee';
+                        status.style.borderColor = '#f44336';
+                        status.style.color = '#c62828';
+                        gatewayWarning.style.display = 'block';
+                        return;
+                    }
+                    
+                    // Uyarıyı kapat
+                    gatewayWarning.style.display = 'none';
+                    status.style.background = '#e3f2fd';
+                    status.style.borderColor = '#2196f3';
+                    status.style.color = '#1976d2';
                     
                     btn.disabled = true;
                     btn.innerText = "⏳ Taranıyor...";
@@ -417,7 +465,7 @@ class TISWebUI:
                     container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⏳</div><p>Ağ taranıyor...</p></div>';
                     
                     try {
-                        const response = await fetch('/api/devices?gateway=' + encodeURIComponent(gatewayInput.value));
+                        const response = await fetch('/api/devices?gateway=' + encodeURIComponent(gatewayIP));
                         const devices = await response.json();
                         
                         status.innerText = `✅ Tarama tamamlandı: ${devices.length} cihaz bulundu`;
@@ -760,6 +808,12 @@ class TISWebUI:
             local_ip = get_local_ip()
             ip_bytes = bytes([int(x) for x in local_ip.split('.')])
             
+            # Determine target: Use gateway IP from query parameter if available, otherwise use self.gateway_ip
+            # If gateway is 0.0.0.0, use broadcast
+            target_ip = self.gateway_ip
+            if target_ip == '0.0.0.0' or not target_ip:
+                target_ip = '<broadcast>'
+            
             # OpCode 0xEFFD: Model query
             packet_effd = TISPacket()
             packet_effd.src_subnet = 1
@@ -772,8 +826,12 @@ class TISWebUI:
             
             tis_data_effd = packet_effd.build()
             full_packet_effd = ip_bytes + b'SMARTCLOUD' + tis_data_effd
-            client.send_to(full_packet_effd, self.gateway_ip)
-            _LOGGER.debug(f"Sent OpCode 0xEFFD (Model query) to {subnet}.{device_id}")
+            
+            if target_ip == '<broadcast>':
+                client.send_broadcast(full_packet_effd)
+            else:
+                client.send_to(full_packet_effd, target_ip)
+            _LOGGER.debug(f"Sent OpCode 0xEFFD (Model query) to {subnet}.{device_id} via {target_ip}")
             
             # OpCode 0x0003: Device type query
             packet_0003 = TISPacket()
@@ -787,10 +845,14 @@ class TISWebUI:
             
             tis_data_0003 = packet_0003.build()
             full_packet_0003 = ip_bytes + b'SMARTCLOUD' + tis_data_0003
-            client.send_to(full_packet_0003, self.gateway_ip)
-            _LOGGER.debug(f"Sent OpCode 0x0003 (Device type query) to {subnet}.{device_id}")
             
-            await client.async_disconnect()
+            if target_ip == '<broadcast>':
+                client.send_broadcast(full_packet_0003)
+            else:
+                client.send_to(full_packet_0003, target_ip)
+            _LOGGER.debug(f"Sent OpCode 0x0003 (Device type query) to {subnet}.{device_id} via {target_ip}")
+            
+            client.close()
             
             return web.json_response({
                 'success': True,
