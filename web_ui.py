@@ -935,9 +935,15 @@ class TISWebUI:
             # Query channel names from device BEFORE saving
             channel_names = {}
             if channels > 1:  # Only for multi-channel devices
-                _LOGGER.info(f"Querying channel names for {subnet}.{device_id}...")
-                channel_names = await self._query_channel_names(subnet, device_id, channels)
-                _LOGGER.info(f"Received {len(channel_names)} channel names")
+                try:
+                    _LOGGER.info(f"Querying channel names for {subnet}.{device_id}...")
+                    channel_names = await self._query_channel_names(subnet, device_id, channels)
+                    _LOGGER.info(f"Received {len(channel_names)} channel names: {list(channel_names.keys())}")
+                except Exception as e:
+                    _LOGGER.error(f"Failed to query channel names: {e}", exc_info=True)
+                    # Continue without channel names
+            else:
+                _LOGGER.debug(f"Single channel device, skipping channel name query")
             
             unique_id = f"tis_{subnet}_{device_id}"
             
