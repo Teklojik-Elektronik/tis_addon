@@ -549,13 +549,17 @@ class TISWebUI:
                             if (card) {
                                 const controls = card.querySelector('.device-controls');
                                 if (controls) {
+                                    // Escape device name for JavaScript
+                                    const safeName = deviceName.replace(/'/g, "\\\\'");
                                     controls.innerHTML = `
                                         <button class="btn-control btn-on" onclick="controlDevice(${subnet}, ${deviceId}, 1, 0)">💡 Aç</button>
                                         <button class="btn-control btn-off" onclick="controlDevice(${subnet}, ${deviceId}, 0, 0)">🌙 Kapat</button>
-                                        <button class="btn-control btn-remove" onclick="removeDevice(${subnet}, ${deviceId}, '${deviceName}')">🗑️ Sil</button>
+                                        <button class="btn-control btn-remove" onclick="removeDevice(${subnet}, ${deviceId}, '${safeName}')">🗑️ Sil</button>
                                     `;
                                     card.classList.add('added');
                                 }
+                            } else {
+                                console.error('Card not found for subnet=' + subnet + ', device=' + deviceId);
                             }
                         } else {
                             alert('❌ Hata: ' + result.message);
@@ -927,6 +931,8 @@ class TISWebUI:
             channels = data.get('channels', 1)
             device_name = data.get('device_name')
 
+            _LOGGER.info(f"📥 Add device request: subnet={subnet}, device_id={device_id}, model={model_name}, channels={channels}, name={device_name}")
+
             if not all([subnet, device_id, model_name]):
                 return web.json_response({'success': False, 'message': 'Eksik parametreler'}, status=400)
 
@@ -943,6 +949,7 @@ class TISWebUI:
                     _LOGGER.error(f"Failed to query channel names: {e}", exc_info=True)
                     # Continue without channel names
             else:
+                _LOGGER.warning(f"⚠️ Channels = {channels}, skipping channel name query (expected > 1)")
                 _LOGGER.debug(f"Single channel device, skipping channel name query")
             
             unique_id = f"tis_{subnet}_{device_id}"
