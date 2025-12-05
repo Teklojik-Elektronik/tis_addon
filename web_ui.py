@@ -26,6 +26,7 @@ class TISWebUI:
         self.app.router.add_get('/api/devices', self.handle_devices)
         self.app.router.add_post('/api/control', self.handle_control)
         self.app.router.add_post('/api/add_device', self.handle_add_device)
+        self.app.router.add_post('/api/remove_device', self.handle_remove_device)
         self.app.router.add_get('/api/debug/messages', self.handle_debug_messages)
         self.app.router.add_post('/api/debug/start', self.handle_debug_start)
         self.app.router.add_post('/api/debug/stop', self.handle_debug_stop)
@@ -207,6 +208,16 @@ class TISWebUI:
                 }
                 .btn-off {
                     background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+                }
+                .btn-remove {
+                    background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+                    border: 2px solid #d32f2f;
+                }
+                .btn-remove:hover {
+                    background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
+                    border-color: #b71c1c;
+                    transform: translateY(-1px);
+                    box-shadow: 0 6px 20px rgba(244, 67, 54, 0.4);
                 }
                 .empty-state {
                     text-align: center;
@@ -431,11 +442,25 @@ class TISWebUI:
                 function createDeviceCard(dev) {
                     const icon = getDeviceIcon(dev.model_name);
                     const addedClass = dev.is_added ? 'added' : '';
-                    const addButtonText = dev.is_added ? '✓ Eklenmiş' : '➕ Ekle';
-                    const addButtonDisabled = dev.is_added ? 'disabled' : '';
-                    const addButtonStyle = dev.is_added 
-                        ? 'background: #9e9e9e; cursor: not-allowed;' 
-                        : 'background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);';
+                    
+                    // Eklenmiş cihazlar için Sil butonu, eklenmemişler için Ekle butonu
+                    let actionButton = '';
+                    if (dev.is_added) {
+                        actionButton = `
+                            <button class="btn-control btn-remove" 
+                                    onclick="removeDevice(${dev.subnet}, ${dev.device}, '${dev.name}')">
+                                🗑️ Sil
+                            </button>
+                        `;
+                    } else {
+                        actionButton = `
+                            <button class="btn-control" 
+                                    style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);"
+                                    onclick="addDevice(${dev.subnet}, ${dev.device}, '${dev.model_name}', ${dev.channels}, '${dev.name}')">
+                                ➕ Ekle
+                            </button>
+                        `;
+                    }
                     
                     return `
                         <div class="device-card ${addedClass}">
@@ -456,10 +481,7 @@ class TISWebUI:
                                 <button class="btn-control btn-off" onclick="controlDevice(${dev.subnet}, ${dev.device}, 0, 0)">
                                     🌙 Kapat
                                 </button>
-                                <button class="btn-control" style="${addButtonStyle}" ${addButtonDisabled}
-                                        onclick="addDevice(${dev.subnet}, ${dev.device}, '${dev.model_name}', ${dev.channels}, '${dev.name}')">
-                                    ${addButtonText}
-                                </button>
+                                ${actionButton}
                             </div>
                         </div>
                     `;
@@ -522,6 +544,37 @@ class TISWebUI:
                         if (result.success) {
                             alert('✅ Cihaz başarıyla eklendi!\\n\\n' + result.message);
                             document.getElementById('status').innerText = '✅ ' + result.message;
+                        } else {
+                            alert('❌ Hata: ' + result.message);
+                        }
+                    } catch (err) {
+                        alert('❌ Hata: ' + err.message);
+                    }
+                }
+
+                async function removeDevice(subnet, deviceId, deviceName) {
+                    if (!confirm(`"${deviceName}" cihazını silmek istediğinizden emin misiniz?\\n\\nBu işlem cihazı Home Assistant'tan tamamen kaldıracaktır.`)) {
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch('/api/remove_device', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                subnet: subnet,
+                                device_id: deviceId
+                            })
+                        });
+                        
+                        const result = await response.json();
+                        if (result.success) {
+                            alert('✅ Cihaz başarıyla silindi!\\n\\n' + result.message);
+                            document.getElementById('status').innerText = '✅ ' + result.message;
+                            // Cihaz listesini yeniden yükle
+                            await loadDevices();
                         } else {
                             alert('❌ Hata: ' + result.message);
                         }
@@ -908,6 +961,56 @@ class TISWebUI:
                 
         except Exception as e:
             _LOGGER.error(f"Add device error: {e}")
+            return web.json_response({'success': False, 'message': f'❌ Hata: {str(e)}'}, status=500)
+    
+    async def handle_remove_device(self, request):
+        """Handle remove device from Home Assistant request."""
+        try:
+            data = await request.json()
+            subnet = data.get('subnet')
+            device_id = data.get('device_id')
+
+            if subnet is None or device_id is None:
+                return web.json_response({'success': False, 'message': 'Eksik parametreler'}, status=400)
+
+            unique_id = f"tis_{subnet}_{device_id}"
+            
+            # Remove from /config/tis_devices.json
+            devices_file = '/config/tis_devices.json'
+            devices = {}
+            try:
+                with open(devices_file, 'r') as f:
+                    devices = json.load(f)
+            except FileNotFoundError:
+                return web.json_response({'success': False, 'message': 'Cihaz dosyası bulunamadı'}, status=404)
+            
+            if unique_id not in devices:
+                return web.json_response({'success': False, 'message': 'Cihaz bulunamadı'}, status=404)
+            
+            device_name = devices[unique_id].get('name', f'{subnet}.{device_id}')
+            del devices[unique_id]
+            
+            with open(devices_file, 'w') as f:
+                json.dump(devices, f, indent=2)
+            
+            _LOGGER.info(f"Device removed from JSON: {unique_id} - {device_name}")
+            
+            # Try to reload TIS integration automatically
+            reload_success = await self._reload_tis_integration()
+            
+            if reload_success:
+                return web.json_response({
+                    'success': True,
+                    'message': f'🗑️ Cihaz silindi: {device_name}\n\n🔄 TIS entegrasyonu otomatik olarak yenilendi!\nCihaz Home Assistant\'tan kaldırıldı.'
+                })
+            else:
+                return web.json_response({
+                    'success': True,
+                    'message': f'🗑️ Cihaz silindi: {device_name}\n\n⚠️ Home Assistant\'tan kaldırmak için TIS entegrasyonunu manuel yenileyin:\nSettings → Integrations → TIS → ⋮ → Reload'
+                })
+                
+        except Exception as e:
+            _LOGGER.error(f"Remove device error: {e}")
             return web.json_response({'success': False, 'message': f'❌ Hata: {str(e)}'}, status=500)
     
     async def _reload_tis_integration(self):
