@@ -930,6 +930,15 @@ class TISWebUI:
             if not all([subnet, device_id, model_name]):
                 return web.json_response({'success': False, 'message': 'Eksik parametreler'}, status=400)
 
+            _LOGGER.info(f"Adding device: {subnet}.{device_id} - {device_name} ({channels} channels)")
+            
+            # Query channel names from device BEFORE saving
+            channel_names = {}
+            if channels > 1:  # Only for multi-channel devices
+                _LOGGER.info(f"Querying channel names for {subnet}.{device_id}...")
+                channel_names = await self._query_channel_names(subnet, device_id, channels)
+                _LOGGER.info(f"Received {len(channel_names)} channel names")
+            
             unique_id = f"tis_{subnet}_{device_id}"
             
             device_info = {
@@ -937,7 +946,8 @@ class TISWebUI:
                 'device_id': device_id,
                 'model_name': model_name,
                 'channels': channels,
-                'name': device_name or f"{model_name} ({subnet}.{device_id})"
+                'name': device_name or f"{model_name} ({subnet}.{device_id})",
+                'channel_names': channel_names  # Add channel names to JSON
             }
             
             # Save to /config/tis_devices.json (TIS integration reads from here)
@@ -1090,6 +1100,75 @@ class TISWebUI:
         except Exception as e:
             _LOGGER.error(f"Error reloading TIS integration: {e}", exc_info=True)
             return False
+    
+    async def _query_channel_names(self, subnet: int, device_id: int, channels: int) -> dict:
+        """Query channel names from device via UDP."""
+        channel_names = {}
+        
+        try:
+            from tis_protocol import TISUDPClient, TISPacket
+            from discovery import get_local_ip
+            
+            client = TISUDPClient(self.gateway_ip, self.udp_port)
+            await client.async_connect(bind=True)  # Bind to receive responses
+            
+            local_ip = get_local_ip()
+            ip_bytes = bytes([int(x) for x in local_ip.split('.')])
+            
+            # Query each channel name (OpCode 0xF00E)
+            for ch in range(1, min(channels + 1, 25)):  # Max 24 channels
+                packet = TISPacket()
+                packet.src_subnet = 1
+                packet.src_device = 254
+                packet.src_type = 0xFFFE
+                packet.tgt_subnet = subnet
+                packet.tgt_device = device_id
+                packet.op_code = 0xF00E  # Channel name query
+                packet.additional_data = bytes([ch])
+                
+                tis_data = packet.build()
+                full_packet = ip_bytes + b'SMARTCLOUD' + tis_data
+                client.send_to(full_packet, self.gateway_ip)
+                
+                _LOGGER.debug(f"Sent channel name query for CH{ch}")
+                
+                # Small delay between requests
+                await asyncio.sleep(0.1)
+            
+            # Wait for responses (OpCode 0xF00F)
+            await asyncio.sleep(2)  # Wait 2 seconds for all responses
+            
+            # Read responses
+            for _ in range(channels):
+                try:
+                    data, addr = client.sock.recvfrom(1024)
+                    if len(data) > 14:  # Skip IP + SMARTCLOUD
+                        parsed = TISPacket.parse(data[14:])
+                        if parsed and parsed['op_code'] == 0xF00F:
+                            if len(parsed['additional_data']) >= 1:
+                                ch = parsed['additional_data'][0]
+                                name_bytes = bytes(parsed['additional_data'][1:])
+                                name_bytes = name_bytes.rstrip(b'\x00').rstrip(b'\xff')
+                                
+                                if len(name_bytes) > 0 and not all(b == 0xFF for b in name_bytes):
+                                    try:
+                                        name = name_bytes.decode('utf-8').strip()
+                                        channel_names[ch] = name
+                                        _LOGGER.info(f"CH{ch}: {name}")
+                                    except UnicodeDecodeError:
+                                        pass
+                except BlockingIOError:
+                    break
+                except Exception as e:
+                    _LOGGER.warning(f"Error reading channel name response: {e}")
+                    break
+            
+            client.close()
+            return channel_names
+            
+        except Exception as e:
+            _LOGGER.error(f"Failed to query channel names: {e}", exc_info=True)
+            return {}
 
 
 async def main():
