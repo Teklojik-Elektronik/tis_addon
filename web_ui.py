@@ -815,9 +815,11 @@ class TISWebUI:
                     info += f"<strong>Kanal:</strong> {channel} | <strong>Durum:</strong> {'Açık' if state else 'Kapalı'}<br>"
             
             elif op_code == 0x0032:  # Single Channel Light Feedback
-                if len(additional_data) >= 5:
+                if len(additional_data) >= 3:
                     channel = additional_data[0]
-                    brightness_raw = additional_data[1]
+                    # Index 1 is always 0xF8 (max brightness constant)
+                    # Index 2 is actual brightness (0-248)
+                    brightness_raw = additional_data[2]
                     # TIS uses 0-248 scale for 0-100%
                     brightness_pct = int((brightness_raw / 248.0) * 100)
                     info += f"<strong>Kanal:</strong> {channel} | <strong>Parlaklık:</strong> {brightness_pct}% (raw: {brightness_raw})<br>"
