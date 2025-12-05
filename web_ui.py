@@ -530,7 +530,7 @@ class TISWebUI:
                             <td>${dev.model_name}</td>
                             <td>${dev.host}</td>
                             <td class="center">${dev.channels}</td>
-                            <td>${dev.name}</td>
+                            <td>${dev.description || dev.model_name}</td>
                             <td>${actionButtons}</td>
                         </tr>
                     `;

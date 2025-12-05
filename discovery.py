@@ -3,7 +3,7 @@ import logging
 import socket
 import time
 from typing import Any, Dict
-from const import UDP_PORT, DISCOVERY_TIMEOUT, get_device_info
+from const import UDP_PORT, DISCOVERY_TIMEOUT, get_device_info, get_device_description
 from tis_protocol import TISPacket
 
 _LOGGER = logging.getLogger(__name__)
@@ -119,6 +119,7 @@ def _run_discovery(udp_port: int = 6000) -> Dict[str, Dict[str, Any]]:
                                 "model_name": model_name,
                                 "channels": channels,
                                 "name": final_name,
+                                "description": get_device_description(model_name),
                             }
                         elif device_name_from_packet:
                             discovered[unique_id]["name"] = final_name
@@ -165,6 +166,7 @@ def _run_discovery(udp_port: int = 6000) -> Dict[str, Dict[str, Any]]:
                             "model_name": model_name,
                             "channels": channels,
                             "name": final_name,
+                            "description": get_device_description(model_name),
                         }
                         
             except socket.timeout:
@@ -249,6 +251,7 @@ class TISDiscovery:
                                         "model_name": model_name,
                                         "channels": channels,
                                         "name": f"{model_name} ({subnet}.{device_id})",
+                                        "description": get_device_description(model_name),
                                     }
                                     discovered[unique_id] = device_info
                                     
