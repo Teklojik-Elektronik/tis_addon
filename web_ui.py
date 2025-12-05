@@ -755,32 +755,39 @@ class TISWebUI:
             client = TISUDPClient(self.gateway_ip, self.udp_port)
             await client.async_connect(bind=False)  # Send only, no need to bind
             
+            # Get local IP for SMARTCLOUD header
+            from discovery import get_local_ip
+            local_ip = get_local_ip()
+            ip_bytes = bytes([int(x) for x in local_ip.split('.')])
+            
             # OpCode 0xEFFD: Model query
-            packet_effd = TISPacket.build({
-                'op_code': 0xEFFD,
-                'src_subnet': 0,
-                'src_device': 0,
-                'src_type': 0,
-                'tgt_subnet': subnet,
-                'tgt_device': device_id,
-                'tgt_type': 0,
-                'additional_data': b''
-            })
-            await client.async_send_packet(packet_effd)
+            packet_effd = TISPacket()
+            packet_effd.src_subnet = 1
+            packet_effd.src_device = 254
+            packet_effd.src_type = 0xFFFE
+            packet_effd.tgt_subnet = subnet
+            packet_effd.tgt_device = device_id
+            packet_effd.op_code = 0xEFFD
+            packet_effd.additional_data = b''
+            
+            tis_data_effd = packet_effd.build()
+            full_packet_effd = ip_bytes + b'SMARTCLOUD' + tis_data_effd
+            client.send_to(full_packet_effd, self.gateway_ip)
             _LOGGER.debug(f"Sent OpCode 0xEFFD (Model query) to {subnet}.{device_id}")
             
             # OpCode 0x0003: Device type query
-            packet_0003 = TISPacket.build({
-                'op_code': 0x0003,
-                'src_subnet': 0,
-                'src_device': 0,
-                'src_type': 0,
-                'tgt_subnet': subnet,
-                'tgt_device': device_id,
-                'tgt_type': 0,
-                'additional_data': b''
-            })
-            await client.async_send_packet(packet_0003)
+            packet_0003 = TISPacket()
+            packet_0003.src_subnet = 1
+            packet_0003.src_device = 254
+            packet_0003.src_type = 0xFFFE
+            packet_0003.tgt_subnet = subnet
+            packet_0003.tgt_device = device_id
+            packet_0003.op_code = 0x0003
+            packet_0003.additional_data = b''
+            
+            tis_data_0003 = packet_0003.build()
+            full_packet_0003 = ip_bytes + b'SMARTCLOUD' + tis_data_0003
+            client.send_to(full_packet_0003, self.gateway_ip)
             _LOGGER.debug(f"Sent OpCode 0x0003 (Device type query) to {subnet}.{device_id}")
             
             await client.async_disconnect()
@@ -1234,11 +1241,15 @@ class TISWebUI:
                 await asyncio.sleep(0.1)
             
             # Wait for responses (OpCode 0xF00F)
-            await asyncio.sleep(2)  # Wait 2 seconds for all responses
+            # Socket timeout 1.0s, so we need to try multiple times
+            timeout = 3.0  # Total wait time
+            start_time = asyncio.get_event_loop().time()
             
             # Read responses
-            for _ in range(channels):
+            while asyncio.get_event_loop().time() - start_time < timeout:
                 try:
+                    # Non-blocking receive
+                    client.sock.settimeout(0.1)  # Short timeout for non-blocking
                     data, addr = client.sock.recvfrom(1024)
                     if len(data) > 14:  # Skip IP + SMARTCLOUD
                         parsed = TISPacket.parse(data[14:])
@@ -1255,11 +1266,14 @@ class TISWebUI:
                                         _LOGGER.info(f"CH{ch}: {name}")
                                     except UnicodeDecodeError:
                                         pass
+                except socket.timeout:
+                    # No data available, wait a bit and retry
+                    await asyncio.sleep(0.1)
                 except BlockingIOError:
-                    break
+                    await asyncio.sleep(0.1)
                 except Exception as e:
                     _LOGGER.warning(f"Error reading channel name response: {e}")
-                    break
+                    await asyncio.sleep(0.1)
             
             client.close()
             return channel_names
