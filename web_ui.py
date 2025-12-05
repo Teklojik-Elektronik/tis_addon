@@ -573,8 +573,8 @@ class TISWebUI:
                         if (result.success) {
                             alert('✅ Cihaz başarıyla silindi!\\n\\n' + result.message);
                             document.getElementById('status').innerText = '✅ ' + result.message;
-                            // Cihaz listesini yeniden yükle
-                            await loadDevices();
+                            // Cihaz listesini yeniden tara
+                            await scanDevices();
                         } else {
                             alert('❌ Hata: ' + result.message);
                         }
