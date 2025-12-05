@@ -80,6 +80,11 @@ class TISWebUI:
                     border-radius: 12px; 
                     box-shadow: 0 10px 40px rgba(0,0,0,0.2); 
                 }
+                .container.full-width {
+                    max-width: 100%;
+                    margin: 0;
+                    border-radius: 0;
+                }
                 header {
                     display: flex;
                     justify-content: space-between;
@@ -304,14 +309,17 @@ class TISWebUI:
                     debugMode = !debugMode;
                     const panel = document.getElementById('debugPanel');
                     const btn = document.getElementById('debugBtn');
+                    const container = document.querySelector('.container');
                     
                     if (debugMode) {
                         panel.style.display = 'block';
                         btn.innerText = '⏹️ Debug Durdur';
+                        container.classList.add('full-width');
                         startDebugMonitor();
                     } else {
                         panel.style.display = 'none';
                         btn.innerText = '🔧 Debug Tool';
+                        container.classList.remove('full-width');
                         stopDebugMonitor();
                     }
                 }
