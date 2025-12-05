@@ -1119,6 +1119,36 @@ class TISWebUI:
             
         except Exception as e:
             return f"<span style='color:#f44336;'>Data decode hatası: {e}</span><br>"
+    
+    def _detect_entity_type(self, model_name: str) -> str:
+        """Detect Home Assistant entity type from device model name."""
+        model = model_name.upper()
+        
+        # LIGHT - Dimmer devices
+        if any(x in model for x in ['DIM-', 'VLC-', 'DALI-']):
+            return 'light'
+        
+        # CLIMATE - HVAC/Thermostat
+        if any(x in model for x in ['-AC', 'HVAC', 'VAV']):
+            # But not for AC panel switches
+            if 'AC-4G' in model or 'AC4G' in model:
+                return 'switch'
+            return 'climate'
+        
+        # COVER - Curtain/Motor
+        if any(x in model for x in ['TIS-M', 'TIS-TM', 'CURTAIN', 'MOTOR', 'LFT-']):
+            return 'cover'
+        
+        # BINARY SENSOR - Motion sensors
+        if any(x in model for x in ['PIR', 'HEALTH-CM', 'HEALTH-SENSOR', 'OS-MMV2']):
+            return 'binary_sensor'
+        
+        # SENSOR - Temperature/Humidity sensors
+        if any(x in model for x in ['4T-IN', 'ES-10F-CM', '4AI-', '4CH-AIN', 'WS-71']):
+            return 'sensor'
+        
+        # Default: Switch (relay)
+        return 'switch'
 
     async def handle_add_device(self, request):
         """Handle add device to Home Assistant request."""
@@ -1153,13 +1183,18 @@ class TISWebUI:
             
             unique_id = f"tis_{subnet}_{device_id}"
             
+            # Detect entity type from model name
+            entity_type = self._detect_entity_type(model_name)
+            _LOGGER.info(f"Detected entity type: {entity_type} for model {model_name}")
+            
             device_info = {
                 'subnet': subnet,
                 'device_id': device_id,
                 'model_name': model_name,
                 'channels': channels,
                 'name': device_name or f"{model_name} ({subnet}.{device_id})",
-                'channel_names': channel_names  # Add channel names to JSON
+                'channel_names': channel_names,  # Add channel names to JSON
+                'entity_type': entity_type  # NEW: Entity type for HA
             }
             
             # Save to /config/tis_devices.json (TIS integration reads from here)
