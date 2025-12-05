@@ -785,14 +785,16 @@ class TISWebUI:
             # Send device event immediately
             device_json = json.dumps(device)
             await response.write(b'event: device\n')
-            await response.write(f'data: {device_json}\n\n'.encode())
+            data_line = f'data: {device_json}\n\n'
+            await response.write(data_line.encode())
         
         # Run discovery with callback
         devices = await discovery.discover_with_callback(on_device_found)
         
         # Send completion event
         await response.write(b'event: complete\n')
-        await response.write(f'data: {{"count": {len(devices)}}}}\n\n'.encode())
+        complete_data = f'data: {{"count": {len(devices)}}}\\n\\n'
+        await response.write(complete_data.encode())
         
         return response
 
