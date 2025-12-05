@@ -544,6 +544,22 @@ class TISWebUI:
                         if (result.success) {
                             alert('✅ Cihaz başarıyla eklendi!\\n\\n' + result.message);
                             document.getElementById('status').innerText = '✅ ' + result.message;
+                            // UI'daki butonu güncelle
+                            const cards = document.querySelectorAll('.device-card');
+                            cards.forEach(card => {
+                                const cardText = card.innerText;
+                                if (cardText.includes(`${subnet}/${deviceId}`)) {
+                                    const controls = card.querySelector('.device-controls');
+                                    if (controls) {
+                                        controls.innerHTML = `
+                                            <button class="btn-control btn-on" onclick="controlDevice(${subnet}, ${deviceId}, 1, 0)">💡 Aç</button>
+                                            <button class="btn-control btn-off" onclick="controlDevice(${subnet}, ${deviceId}, 0, 0)">🌙 Kapat</button>
+                                            <button class="btn-control btn-remove" onclick="removeDevice(${subnet}, ${deviceId}, '${deviceName}')">🗑️ Sil</button>
+                                        `;
+                                        card.classList.add('added');
+                                    }
+                                }
+                            });
                         } else {
                             alert('❌ Hata: ' + result.message);
                         }
@@ -573,8 +589,14 @@ class TISWebUI:
                         if (result.success) {
                             alert('✅ Cihaz başarıyla silindi!\\n\\n' + result.message);
                             document.getElementById('status').innerText = '✅ ' + result.message;
-                            // Cihaz listesini yeniden tara
-                            await scanDevices();
+                            // UI'dan cihaz kartını kaldır (tarama yapmadan)
+                            const cards = document.querySelectorAll('.device-card');
+                            cards.forEach(card => {
+                                const cardText = card.innerText;
+                                if (cardText.includes(`${subnet}/${deviceId}`)) {
+                                    card.remove();
+                                }
+                            });
                         } else {
                             alert('❌ Hata: ' + result.message);
                         }
