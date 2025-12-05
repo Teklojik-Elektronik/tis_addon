@@ -769,7 +769,7 @@ class TISWebUI:
         
         # Send start event
         await response.write(b'event: start\n')
-        await response.write(f'data: {{"message": "Scanning network..."}}}\n\n'.encode())
+        await response.write(b'data: {"message": "Scanning network..."}\n\n')
         
         # Discover devices with callback for each device found
         from discovery import TISDiscovery
