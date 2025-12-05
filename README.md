@@ -11,6 +11,11 @@ TIS cihazlarınızı yönetmek için web tabanlı arayüz. Home Assistant addon 
 - ✅ Modern ve kullanıcı dostu web arayüzü
 - ✅ Gerçek zamanlı cihaz kontrolü
 - ✅ SMARTCLOUD gateway desteği
+- ✅ **Debug Tool**: Ağ trafiğini canlı izleme ve paket analizi
+  - Gerçek zamanlı UDP paket dinleme
+  - Detaylı paket ayrıştırma (OpCode, cihaz bilgisi, kanal/durum)
+  - Türkçe açıklamalar ile anlaşılır mesajlar
+  - Tam ekran debug görünümü
 
 ## 📦 Kurulum
 
@@ -83,6 +88,31 @@ Addon'dan yeni bir cihaz eklediğinizde:
 
 > **Not:** Şu anda otomatik reload çalışmıyor, manuel reload yapmanız gerekiyor. Home Assistant restart'a gerek yok!
 
+### 🔧 Debug Tool Kullanımı
+
+TIS ağ trafiğini gerçek zamanlı izlemek için:
+
+1. Web UI'da **"🔧 Debug Tool"** butonuna tıklayın
+2. Debug panel açılır ve sayfa tam genişlik moduna geçer
+3. **UDP Port 6000** üzerinden gelen tüm TIS paketlerini görebilirsiniz
+4. Her paket için şu bilgiler gösterilir:
+   - 📦 Kaynak IP adresi ve port
+   - **OpCode**: Komut türü (örn: 0x0031 = Tek Kanal Işık Kontrolü)
+   - **Kaynak Cihaz**: Model adı ve subnet/device ID
+   - **Kanal & Durum**: Kanal numarası, açık/kapalı durumu veya parlaklık yüzdesi
+   - **Hex Dump**: Ham paket verileri
+
+**Örnek Debug Çıktısı:**
+```
+📦 192.168.1.200:6000 (SMARTCLOUD: 192.168.1.139)
+OpCode: 0x0031 (Tek Kanal Işık Kontrolü)
+Kaynak: TIS-OS-MMV2-IRE (1.102)
+Kanal: 6 | Durum: Kapalı
+10 01 66 80 BA 00 31 01 01 06 00 00 00 34 28 12...
+```
+
+Debug modu aktifken sayfa tam ekran genişliğinde olacaktır. **"⏹️ Debug Durdur"** butonuna basarak normal görünüme dönebilirsiniz.
+
 ## 📱 Desteklenen Cihazlar
 
 - 💡 Dimmer'lar ve LED kontrolörler
@@ -100,6 +130,12 @@ Addon'dan yeni bir cihaz eklediğinizde:
 - **Discovery**: OpCode 0xF003/0xF004
 - **Paket Formatı**: SMARTCLOUD header + TIS data (27+ bytes)
 - **Network Detection**: Otomatik Ethernet/WiFi interface tespiti
+- **Debug Tool**: 
+  - UDP socket listener (non-blocking async)
+  - 500ms polling interval
+  - OpCode ayrıştırma (0x0031, 0x0032, 0x0034, 0x2011, vb.)
+  - Cihaz model tanıma (191 cihaz tipi)
+  - HTML formatted output with Turkish descriptions
 
 ## 🐛 Sorun Giderme
 
