@@ -4,9 +4,11 @@ import asyncio
 import argparse
 import os
 import json
+import socket
+import time
 from aiohttp import web
-from discovery import discover_tis_devices
-from tis_protocol import TISProtocol
+from discovery import discover_tis_devices, get_local_ip
+from tis_protocol import TISProtocol, TISPacket
 
 _LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -25,11 +27,14 @@ class TISWebUI:
         self.app.router.add_post('/api/control', self.handle_control)
         self.app.router.add_post('/api/add_device', self.handle_add_device)
         self.app.router.add_get('/api/debug/messages', self.handle_debug_messages)
+        self.app.router.add_post('/api/debug/start', self.handle_debug_start)
+        self.app.router.add_post('/api/debug/stop', self.handle_debug_stop)
         self.runner = None
         self.site = None
         self.protocol = TISProtocol(gateway_ip, udp_port)
         self.debug_messages = []  # Store debug messages
         self.debug_listener = None  # UDP listener for debug mode
+        self.debug_active = False  # Debug mode status
 
     async def start(self):
         """Start the web server."""
@@ -310,6 +315,14 @@ class TISWebUI:
                     const log = document.getElementById('debugLog');
                     log.innerHTML = '<div style="color: #4CAF50;">✅ Debug monitör başlatıldı - Ağ dinleniyor...</div>';
                     
+                    // Start backend UDP listener
+                    fetch('/api/debug/start', { method: 'POST' })
+                        .then(r => r.json())
+                        .then(data => {
+                            console.log('Debug listener started:', data.message);
+                        })
+                        .catch(e => console.error('Debug start error:', e));
+                    
                     // Start polling for debug messages
                     debugSocket = setInterval(async () => {
                         try {
@@ -322,7 +335,7 @@ class TISWebUI:
                         } catch (e) {
                             // Ignore errors during polling
                         }
-                    }, 1000);
+                    }, 500);  // Poll faster for real-time updates
                 }
                 
                 function stopDebugMonitor() {
@@ -330,6 +343,14 @@ class TISWebUI:
                         clearInterval(debugSocket);
                         debugSocket = null;
                     }
+                    
+                    // Stop backend UDP listener
+                    fetch('/api/debug/stop', { method: 'POST' })
+                        .then(r => r.json())
+                        .then(data => {
+                            console.log('Debug listener stopped:', data.message);
+                        })
+                        .catch(e => console.error('Debug stop error:', e));
                 }
                 
                 function addDebugLog(type, data, timestamp) {
@@ -611,6 +632,113 @@ class TISWebUI:
         except Exception as e:
             _LOGGER.error(f"Debug messages error: {e}")
             return web.json_response([], status=500)
+    
+    async def handle_debug_start(self, request):
+        """Start debug UDP listener."""
+        try:
+            if not self.debug_active:
+                self.debug_active = True
+                self.debug_listener = asyncio.create_task(self._udp_debug_listener())
+                _LOGGER.info("Debug UDP listener started")
+                return web.json_response({'success': True, 'message': 'Debug mode başlatıldı'})
+            return web.json_response({'success': True, 'message': 'Debug mode zaten aktif'})
+        except Exception as e:
+            _LOGGER.error(f"Debug start error: {e}")
+            return web.json_response({'success': False, 'message': str(e)}, status=500)
+    
+    async def handle_debug_stop(self, request):
+        """Stop debug UDP listener."""
+        try:
+            if self.debug_active:
+                self.debug_active = False
+                if self.debug_listener:
+                    self.debug_listener.cancel()
+                    self.debug_listener = None
+                _LOGGER.info("Debug UDP listener stopped")
+                return web.json_response({'success': True, 'message': 'Debug mode durduruldu'})
+            return web.json_response({'success': True, 'message': 'Debug mode zaten pasif'})
+        except Exception as e:
+            _LOGGER.error(f"Debug stop error: {e}")
+            return web.json_response({'success': False, 'message': str(e)}, status=500)
+    
+    async def _udp_debug_listener(self):
+        """Listen to UDP packets for debug."""
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        sock.setblocking(False)
+        sock.bind(('', self.udp_port))
+        
+        _LOGGER.info(f"Debug listener bound to port {self.udp_port}")
+        
+        try:
+            while self.debug_active:
+                try:
+                    # Non-blocking receive with timeout
+                    await asyncio.sleep(0.1)
+                    
+                    try:
+                        data, addr = sock.recvfrom(4096)
+                        
+                        # Parse packet info
+                        packet_info = self._parse_packet_for_debug(data, addr)
+                        
+                        self.debug_messages.append({
+                            'type': 'receive',
+                            'data': packet_info,
+                            'timestamp': time.time() * 1000
+                        })
+                        
+                        # Keep only last 50 messages
+                        if len(self.debug_messages) > 50:
+                            self.debug_messages = self.debug_messages[-50:]
+                            
+                    except BlockingIOError:
+                        pass
+                    
+                except asyncio.CancelledError:
+                    break
+                except Exception as e:
+                    _LOGGER.error(f"Debug listener error: {e}")
+        finally:
+            sock.close()
+            _LOGGER.info("Debug listener closed")
+    
+    def _parse_packet_for_debug(self, data, addr):
+        """Parse packet data for debug display."""
+        try:
+            ip, port = addr
+            
+            # Check for SMARTCLOUD header
+            has_smartcloud = False
+            if len(data) > 14 and data[4:14] == b'SMARTCLOUD':
+                has_smartcloud = True
+                source_ip_bytes = data[0:4]
+                source_ip = '.'.join(str(b) for b in source_ip_bytes)
+                tis_data = data[14:]
+            else:
+                source_ip = ip
+                tis_data = data
+            
+            # Try to parse TIS packet
+            parsed = TISPacket.parse(tis_data)
+            
+            if parsed:
+                op_code = parsed.get('op_code', 0)
+                src_subnet = parsed.get('src_subnet', 0)
+                src_device = parsed.get('src_device', 0)
+                
+                info = f"📦 {ip}:{port}"
+                if has_smartcloud:
+                    info += f" (SMARTCLOUD: {source_ip})"
+                info += f" | OpCode: 0x{op_code:04X} | Device: {src_subnet}.{src_device} | Size: {len(data)} bytes"
+                
+                return info
+            else:
+                return f"📦 {ip}:{port} | Raw packet | Size: {len(data)} bytes | Data: {data[:20].hex()}..."
+                
+        except Exception as e:
+            return f"📦 {addr[0]}:{addr[1]} | Parse error: {str(e)}"
 
     async def handle_add_device(self, request):
         """Handle add device to Home Assistant request."""
