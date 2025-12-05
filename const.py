@@ -85,11 +85,9 @@ TIS_DEVICE_TYPES = {
     (0x80, 0x70): ("LUNA-OUT-HOTEL-LRF", 1),
     (0x80, 0x71): ("LUNA-IN-HOTEL-3T3L-LRF", 3),
     (0x80, 0x9C): ("LUNA-OUT-HOTEL-HRF-809C", 1),
-    (0x80, 0x9D): ("LUNA-OUT-HOTEL-809D", 1),
     
     # Motors
     (0x80, 0x10): ("TIS-M3-MOTOR", 1),
-    (0x80, 0x1C): ("TIS-M7-CURTAIN", 1),
     (0x81, 0x10): ("TIS-TM-120", 1),
     
     # IO & Titan Series
@@ -104,9 +102,7 @@ TIS_DEVICE_TYPES = {
     (0x80, 0x6A): ("IO-OUT-HOTEL", 1),
     (0x80, 0x6D): ("IO-IN-HOTEL-LRF", 3),
     (0x80, 0x6E): ("IO-OUT-HOTEL-LRF", 1),
-    (0x80, 0x9A): ("IO-OUT-HOTEL-HRF-809A", 1),
     (0x80, 0x9B): ("IO-OUT-HOTEL-809B", 1),
-    (0x80, 0x9E): ("IO-IN-HOTEL-HRF-809E", 3),
     
     # Venera Series
     (0x80, 0x15): ("VEN-6S-BUS", 6),
@@ -139,7 +135,7 @@ TIS_DEVICE_TYPES = {
     # Tariq Series
     (0x80, 0x1A): ("TARIQ-8G6R5Z", 8),
     (0x80, 0x1B): ("TARIQ-8G3R5Z1F", 8),
-    (0x80, 0x1C): ("TARIQ-8G3R5Z2D", 8),
+    (0x80, 0x1C): ("TARIQ-8G3R5Z2D", 8),  # 32796 decimal
     (0x80, 0xD0): ("TARIQ-10G6R5Z1F", 10),
     (0x80, 0xD1): ("TARIQ-10G3R5Z1F1DA", 10),
     (0x80, 0xD2): ("TARIQ-10G3R5Z2D1F", 10),
@@ -166,8 +162,8 @@ TIS_DEVICE_TYPES = {
     (0x80, 0x6C): ("TIS-MER-AC4G-PB", 4),
     (0x80, 0x94): ("MER-IN-HOTEL-LRF", 1),
     (0x80, 0x98): ("MER-OUT-HOTEL-LRF", 1),
-    (0x80, 0x9A): ("MER-IN-HOTEL-HRF-80AA", 1),
-    (0x80, 0x9D): ("MER-OUT-HOTEL-HRF-80AD", 1),
+    (0x80, 0xAA): ("MER-IN-HOTEL-HRF-80AA", 1),  # 32938 decimal
+    (0x80, 0xAD): ("MER-OUT-HOTEL-HRF-80AD", 1), # 32941 decimal
     (0x81, 0x21): ("TIS-MER-AC-TFT-2G", 2),
     
     # Health & Sensors
@@ -180,17 +176,19 @@ TIS_DEVICE_TYPES = {
     (0x80, 0x42): ("AIR-PIR-CM", 1),
     (0x80, 0x46): ("AIR-1IRE-T", 1),
     (0x80, 0x48): ("AIR-2IRE", 2),
-    (0x80, 0x49): ("AIR-SOCKET-S", 1),
-    (0x80, 0x90): ("TIS-4T-IN", 4),
-    (0x80, 0x9E): ("TIS-HEALTH-CM-RADAR", 1),
-    (0x80, 0xB0): ("TIS-4CH-AIN", 4),
-    (0x80, 0xB8): ("TIS-OS-MMV2-IC", 1),
+    (0x80, 0x51): ("AIR-SOCKET-S", 1),  # 32849 decimal  # 32849 decimal
+    (0x80, 0x91): ("TIS-4CH-AIN", 4),      # 32913 decimal
+    (0x80, 0x92): ("TIS-OUTDOOR-BELL", 1), # 32914 decimal
+    (0x80, 0xAB): ("TIS-4AI-010V", 4),     # 32939 decimal
+    (0x80, 0xAC): ("TIS-4AI-4-20MA", 4),   # 32940 decimal
+    (0x80, 0xAE): ("TIS-HEALTH-CM-RADAR", 1), # 32942 decimal
+    (0x80, 0xAF): ("TIS-ZIG-WF-GTY-V4", 1),   # 32943 decimal
+    (0x80, 0xB0): ("TIS-OS-MMV2-IC", 1),      # 32944 decimal
+    (0x80, 0xB5): ("TIS-ZIG-WF-GTY-V5", 1),   # 32949 decimal
     (0x80, 0xBA): ("TIS-OS-MMV2-IRE", 1),
-    (0x80, 0xBB): ("TIS-4AI-010V", 4),
-    (0x80, 0xBC): ("TIS-4AI-4-20MA", 4),
     
     # AIR Series
-    (0x80, 0x3A): ("MINI-AIR-AUTO-IRE-T", 1),
+    (0x80, 0x36): ("MINI-AIR-AUTO-IRE-T", 1),  # 32822 decimal
     (0x80, 0x3D): ("AIR-AUTO-IRE-T", 1),
     (0x80, 0x54): ("TIS-AIR-BUS", 1),
     
@@ -199,42 +197,43 @@ TIS_DEVICE_TYPES = {
     (0x80, 0x60): ("MET-EN-1PH", 1),
     (0x80, 0x61): ("TIS-KNX-PORT", 1),
     (0x80, 0x62): ("TIS-TRV-16CNV", 16),
-    (0x80, 0x7A): ("TIS-GTY-1AC", 1),
+    (0x80, 0x7A): ("TIS-ZIG-PORT", 1),      # 32890 decimal
+    (0x80, 0x7B): ("TIS-AUD-SRV-4X-160W", 4),  # 32891 decimal
+    (0x80, 0x7C): ("TIS-M7-CURTAIN", 1),    # 32892 decimal
     (0x80, 0x89): ("TIS-VRF-AC", 32),
     (0x80, 0x90): ("TIS-BUS-CONVERTER", 1),
-    (0x80, 0xC0): ("TIS-C-BUS-CONVERTER", 1),
+    (0x80, 0x99): ("TIS-GTY-1AC", 1),       # 32921 decimal
+    (0x80, 0x9A): ("IO-OUT-HOTEL-HRF-809A", 1),  # 32922 decimal
+    (0x80, 0x9D): ("LUNA-OUT-HOTEL-809D", 1),    # 32925 decimal
+    (0x80, 0x9E): ("IO-IN-HOTEL-HRF-809E", 3),   # 32926 decimal
+    (0x80, 0xB7): ("TIS-CLICK-AC-FH-BUS", 1),  # 32951 decimal
+    (0x80, 0xB8): ("TIS-C-BUS-CONVERTER", 1),  # 32952 decimal
+    (0x80, 0xB9): ("TIS-FAN-4CH", 4),          # 32953 decimal
     
     # Audio & Projector
     (0x80, 0x50): ("AMP-5S1Z-MTX", 5),
     (0x80, 0x55): ("PRJ-LFT-15K-130", 1),
     (0x80, 0x57): ("TIS-WS-71", 1),
-    (0x80, 0xCB): ("TIS-AUD-SRV-4X-160W", 4),
     
     # Zigbee Series
     (0x80, 0x32): ("ZIG-ACM-2R-2Z", 2),
     (0x80, 0x33): ("ZIG-VEN-OUT-HOTEL-HRF-8033", 1),
-    (0x80, 0xCA): ("TIS-ZIG-PORT", 1),
-    (0x80, 0xCF): ("TIS-ZIG-WF-GTY-V4", 1),
-    (0x80, 0xD5): ("TIS-ZIG-WF-GTY-V5", 1),
-    (0x81, 0x0A): ("ZIG-VEN-AC-3R-HC", 3),
-    (0x81, 0x0B): ("ZIG-VEN-AC-4R-HC", 4),
-    (0x81, 0x0C): ("ZIG-VEN-AC-5R-LC", 5),
-    (0x81, 0x0D): ("MINI-ZIG-AUTO-IRE-T", 1),
-    (0x81, 0x0F): ("TIS-ZIG-OS-MMV2-IRE", 1),
-    (0x81, 0x11): ("TIS-ZIG-VEN-4G-IRE", 4),
-    (0x81, 0x14): ("TIS-ZIG-HEALTH-CM", 1),
-    (0x81, 0x16): ("TIS-ZIG-BUS-CONVERTER", 1),
+    (0x81, 0x2A): ("ZIG-VEN-AC-3R-HC", 3),      # 33066 decimal
+    (0x81, 0x2B): ("ZIG-VEN-AC-4R-HC", 4),      # 33067 decimal
+    (0x81, 0x2C): ("ZIG-VEN-AC-5R-LC", 5),      # 33068 decimal
+    (0x81, 0x2D): ("MINI-ZIG-AUTO-IRE-T", 1),   # 33069 decimal
+    (0x81, 0x2F): ("TIS-ZIG-OS-MMV2-IRE", 1),   # 33071 decimal
+    (0x81, 0x31): ("TIS-ZIG-VEN-4G-IRE", 4),    # 33073 decimal
+    (0x81, 0x34): ("TIS-ZIG-HEALTH-CM", 1),     # 33076 decimal
+    (0x81, 0x36): ("TIS-ZIG-BUS-CONVERTER", 1), # 33078 decimal
     
     # SOL & Other Panels
     (0x80, 0x8F): ("TIS-BEDSIDE-12G", 12),
-    (0x80, 0x91): ("TIS-OUTDOOR-BELL", 1),
     (0x80, 0x93): ("TIS-SOL-3G", 3),
     (0x80, 0x96): ("TIS-SOL-TFT", 12),
     (0x80, 0xA7): ("TIS-SEC-PRO", 1),
     (0x80, 0xA8): ("TIS-CLICK-AC-BUS", 1),
     (0x80, 0xA9): ("TIS-22DI-DIN", 22),
-    (0x80, 0xBF): ("TIS-CLICK-AC-FH-BUS", 1),
-    (0x80, 0xC1): ("TIS-FAN-4CH", 4),
     
     # Click Series
     (0x80, 0xA1): ("CLICK-1G-PANEL-BUS", 1),
@@ -244,22 +243,22 @@ TIS_DEVICE_TYPES = {
     (0x80, 0xA6): ("CLICK-6G-PANEL-BUS", 6),
     
     # Europa Series
-    (0x80, 0xB9): ("TIS-ERO-1G", 1),
-    (0x80, 0xBA): ("TIS-ERO-2G", 2),
-    (0x80, 0xBB): ("TIS-ERO-3G", 3),
-    (0x80, 0xBC): ("TIS-ERO-4G", 4),
-    (0x80, 0xBE): ("TIS-ERO-6G", 6),
+    (0x80, 0xB1): ("TIS-ERO-1G", 1),     # 32945 decimal
+    (0x80, 0xB2): ("TIS-ERO-2G", 2),     # 32946 decimal
+    (0x80, 0xB3): ("TIS-ERO-3G", 3),     # 32947 decimal
+    (0x80, 0xB4): ("TIS-ERO-4G", 4),     # 32948 decimal
+    (0x80, 0xB6): ("TIS-ERO-6G", 6),     # 32950 decimal
     
     # Sirius Series
-    (0x80, 0xC2): ("TIS-SIR-2G", 2),
-    (0x80, 0xC4): ("TIS-SIR-4G", 4),
-    (0x80, 0xC6): ("TIS-SIR-6G", 6),
-    (0x80, 0xC8): ("TIS-SIR-8G", 8),
+    (0x80, 0xC2): ("TIS-SIR-2G", 2),     # 32962 decimal
+    (0x80, 0xC4): ("TIS-SIR-4G", 4),     # 32964 decimal
+    (0x80, 0xC6): ("TIS-SIR-6G", 6),     # 32966 decimal
+    (0x80, 0xC8): ("TIS-SIR-8G", 8),     # 32968 decimal
     
     # Panel Series
-    (0x81, 0x16): ("TIS-PANEL-2G", 2),
-    (0x81, 0x18): ("TIS-PANEL-4G", 4),
-    (0x81, 0x19): ("TIS-PANEL-8G", 8),
+    (0x81, 0x26): ("TIS-PANEL-2G", 2),  # 33062 decimal
+    (0x81, 0x28): ("TIS-PANEL-4G", 4),  # 33064 decimal
+    (0x81, 0x29): ("TIS-PANEL-8G", 8),  # 33065 decimal
     
     # Saturn Series
     (0xCC, 0xB3): ("TIS-SAT-PAD", 1),
