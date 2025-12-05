@@ -24,9 +24,12 @@ class TISWebUI:
         self.app.router.add_get('/api/devices', self.handle_devices)
         self.app.router.add_post('/api/control', self.handle_control)
         self.app.router.add_post('/api/add_device', self.handle_add_device)
+        self.app.router.add_get('/api/debug/messages', self.handle_debug_messages)
         self.runner = None
         self.site = None
         self.protocol = TISProtocol(gateway_ip, udp_port)
+        self.debug_messages = []  # Store debug messages
+        self.debug_listener = None  # UDP listener for debug mode
 
     async def start(self):
         """Start the web server."""
@@ -204,6 +207,47 @@ class TISWebUI:
                     font-size: 64px;
                     margin-bottom: 20px;
                 }
+                .debug-panel {
+                    background: #1e1e1e;
+                    border: 2px solid #333;
+                    border-radius: 8px;
+                    padding: 15px;
+                    margin-top: 20px;
+                    max-height: 400px;
+                    overflow-y: auto;
+                    font-family: 'Courier New', monospace;
+                    font-size: 12px;
+                    color: #d4d4d4;
+                }
+                .debug-log {
+                    margin: 5px 0;
+                    padding: 5px;
+                    border-left: 3px solid #4CAF50;
+                    background: #2d2d2d;
+                }
+                .debug-log.send {
+                    border-left-color: #2196F3;
+                }
+                .debug-log.receive {
+                    border-left-color: #4CAF50;
+                }
+                .debug-log.error {
+                    border-left-color: #f44336;
+                }
+                .debug-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 10px;
+                }
+                .debug-time {
+                    color: #858585;
+                    font-size: 11px;
+                }
+                .debug-data {
+                    color: #ce9178;
+                    word-break: break-all;
+                }
             </style>
         </head>
         <body>
@@ -217,10 +261,21 @@ class TISWebUI:
                         <input type="text" id="gatewayInput" placeholder="Gateway IP (örn: 192.168.1.200)" 
                                style="padding: 10px; border: 2px solid #667eea; border-radius: 8px; font-size: 14px; width: 200px;">
                         <button id="scanBtn" onclick="scanDevices()">🔍 Cihazları Tara</button>
+                        <button id="debugBtn" onclick="toggleDebug()" style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);">🔧 Debug Tool</button>
                     </div>
                 </header>
                 
                 <div id="status" class="status">Hazır - Cihazları taramak için butona basın</div>
+                
+                <div id="debugPanel" class="debug-panel" style="display: none;">
+                    <div class="debug-header">
+                        <strong>📡 Network Debug Monitor</strong>
+                        <button onclick="clearDebugLog()" style="padding: 5px 10px; font-size: 12px; background: #f44336;">Temizle</button>
+                    </div>
+                    <div id="debugLog" style="min-height: 100px;">
+                        <div style="color: #858585; text-align: center; padding: 20px;">Debug modu başlatılmadı...</div>
+                    </div>
+                </div>
                 
                 <div id="devicesContainer" class="devices-grid">
                     <div class="empty-state">
@@ -232,6 +287,78 @@ class TISWebUI:
             </div>
 
             <script>
+                let debugMode = false;
+                let debugSocket = null;
+                
+                function toggleDebug() {
+                    debugMode = !debugMode;
+                    const panel = document.getElementById('debugPanel');
+                    const btn = document.getElementById('debugBtn');
+                    
+                    if (debugMode) {
+                        panel.style.display = 'block';
+                        btn.innerText = '⏹️ Debug Durdur';
+                        startDebugMonitor();
+                    } else {
+                        panel.style.display = 'none';
+                        btn.innerText = '🔧 Debug Tool';
+                        stopDebugMonitor();
+                    }
+                }
+                
+                function startDebugMonitor() {
+                    const log = document.getElementById('debugLog');
+                    log.innerHTML = '<div style="color: #4CAF50;">✅ Debug monitör başlatıldı - Ağ dinleniyor...</div>';
+                    
+                    // Start polling for debug messages
+                    debugSocket = setInterval(async () => {
+                        try {
+                            const response = await fetch('/api/debug/messages');
+                            const messages = await response.json();
+                            
+                            messages.forEach(msg => {
+                                addDebugLog(msg.type, msg.data, msg.timestamp);
+                            });
+                        } catch (e) {
+                            // Ignore errors during polling
+                        }
+                    }, 1000);
+                }
+                
+                function stopDebugMonitor() {
+                    if (debugSocket) {
+                        clearInterval(debugSocket);
+                        debugSocket = null;
+                    }
+                }
+                
+                function addDebugLog(type, data, timestamp) {
+                    const log = document.getElementById('debugLog');
+                    const time = new Date(timestamp || Date.now()).toLocaleTimeString();
+                    
+                    const typeClass = type === 'send' ? 'send' : type === 'receive' ? 'receive' : 'error';
+                    const typeIcon = type === 'send' ? '📤' : type === 'receive' ? '📥' : '❌';
+                    const typeLabel = type === 'send' ? 'GÖNDER' : type === 'receive' ? 'AL' : 'HATA';
+                    
+                    const logEntry = document.createElement('div');
+                    logEntry.className = `debug-log ${typeClass}`;
+                    logEntry.innerHTML = `
+                        <div style="display: flex; justify-content: space-between;">
+                            <strong>${typeIcon} ${typeLabel}</strong>
+                            <span class="debug-time">${time}</span>
+                        </div>
+                        <div class="debug-data">${data}</div>
+                    `;
+                    
+                    log.appendChild(logEntry);
+                    log.scrollTop = log.scrollHeight;
+                }
+                
+                function clearDebugLog() {
+                    const log = document.getElementById('debugLog');
+                    log.innerHTML = '<div style="color: #858585; text-align: center; padding: 20px;">Log temizlendi...</div>';
+                }
+                
                 async function scanDevices() {
                     const btn = document.getElementById('scanBtn');
                     const status = document.getElementById('status');
@@ -395,7 +522,22 @@ class TISWebUI:
         """Handle device list request."""
         # Get gateway from query parameter or use default
         gateway_ip = request.query.get('gateway', self.gateway_ip)
+        
+        # Add debug log for discovery start
+        self.debug_messages.append({
+            'type': 'send',
+            'data': f'Discovery başlatıldı - Gateway: {gateway_ip}, Port: {self.udp_port}',
+            'timestamp': asyncio.get_event_loop().time() * 1000
+        })
+        
         devices = await discover_tis_devices(gateway_ip, self.udp_port)
+        
+        # Add debug log for discovery result
+        self.debug_messages.append({
+            'type': 'receive',
+            'data': f'Discovery tamamlandı - {len(devices)} cihaz bulundu',
+            'timestamp': asyncio.get_event_loop().time() * 1000
+        })
         
         # Load already added devices from JSON
         import json
@@ -437,13 +579,38 @@ class TISWebUI:
             if subnet is None or device_id is None or state is None:
                 return web.json_response({'success': False, 'message': 'Eksik parametreler'}, status=400)
 
+            # Add debug log
+            self.debug_messages.append({
+                'type': 'send',
+                'data': f'Kontrol komutu - Subnet: {subnet}, Device: {device_id}, State: {state}, Channel: {channel}',
+                'timestamp': asyncio.get_event_loop().time() * 1000
+            })
+
             # Send control command
             await self.protocol.send_control_command(subnet, device_id, channel, state)
+            
+            # Add debug log
+            self.debug_messages.append({
+                'type': 'receive',
+                'data': f'Komut gönderildi - Yanıt bekleniyor...',
+                'timestamp': asyncio.get_event_loop().time() * 1000
+            })
             
             return web.json_response({'success': True})
         except Exception as e:
             _LOGGER.error(f"Control error: {e}")
             return web.json_response({'success': False, 'message': str(e)}, status=500)
+
+    async def handle_debug_messages(self, request):
+        """Handle debug messages request."""
+        try:
+            # Return and clear messages
+            messages = self.debug_messages.copy()
+            self.debug_messages.clear()
+            return web.json_response(messages)
+        except Exception as e:
+            _LOGGER.error(f"Debug messages error: {e}")
+            return web.json_response([], status=500)
 
     async def handle_add_device(self, request):
         """Handle add device to Home Assistant request."""
