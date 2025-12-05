@@ -225,10 +225,11 @@ class TISWebUI:
                     color: #d4d4d4;
                 }
                 .debug-log {
-                    margin: 5px 0;
-                    padding: 5px;
-                    border-left: 3px solid #4CAF50;
+                    margin: 8px 0;
+                    padding: 10px;
+                    border-left: 4px solid #4CAF50;
                     background: #2d2d2d;
+                    border-radius: 4px;
                 }
                 .debug-log.send {
                     border-left-color: #2196F3;
@@ -250,8 +251,12 @@ class TISWebUI:
                     font-size: 11px;
                 }
                 .debug-data {
-                    color: #ce9178;
+                    color: #d4d4d4;
                     word-break: break-all;
+                    line-height: 1.6;
+                }
+                .debug-data strong {
+                    color: #4EC9B0;
                 }
             </style>
         </head>
@@ -727,18 +732,108 @@ class TISWebUI:
                 op_code = parsed.get('op_code', 0)
                 src_subnet = parsed.get('src_subnet', 0)
                 src_device = parsed.get('src_device', 0)
+                tgt_subnet = parsed.get('tgt_subnet', 0)
+                tgt_device = parsed.get('tgt_device', 0)
                 
+                # Get device name from const.py
+                from const import get_device_info
+                src_type = parsed.get('src_type', 0)
+                model_name, channels = get_device_info(src_type)
+                
+                # Decode OpCode meaning
+                op_meaning = self._decode_opcode(op_code, parsed)
+                
+                # Build detailed info
                 info = f"📦 {ip}:{port}"
                 if has_smartcloud:
                     info += f" (SMARTCLOUD: {source_ip})"
-                info += f" | OpCode: 0x{op_code:04X} | Device: {src_subnet}.{src_device} | Size: {len(data)} bytes"
+                info += f"<br>"
+                info += f"<strong>OpCode:</strong> 0x{op_code:04X} ({op_meaning})<br>"
+                info += f"<strong>Kaynak:</strong> {model_name} ({src_subnet}.{src_device})<br>"
+                if tgt_subnet != 255:
+                    info += f"<strong>Hedef:</strong> {tgt_subnet}.{tgt_device}<br>"
+                
+                # Add specific data based on OpCode
+                extra_info = self._decode_packet_data(op_code, parsed)
+                if extra_info:
+                    info += extra_info
+                
+                # Add hex dump
+                hex_dump = ' '.join(f'{b:02X}' for b in tis_data[:32])
+                if len(tis_data) > 32:
+                    hex_dump += '...'
+                info += f"<div style='color:#858585; font-size:10px; margin-top:5px;'>{hex_dump}</div>"
                 
                 return info
             else:
-                return f"📦 {ip}:{port} | Raw packet | Size: {len(data)} bytes | Data: {data[:20].hex()}..."
+                hex_dump = ' '.join(f'{b:02X}' for b in data[:32])
+                if len(data) > 32:
+                    hex_dump += '...'
+                return f"📦 {ip}:{port} | <span style='color:#f44336;'>Parse hatası</span><br>Size: {len(data)} bytes<br><div style='color:#858585;'>{hex_dump}</div>"
                 
         except Exception as e:
-            return f"📦 {addr[0]}:{addr[1]} | Parse error: {str(e)}"
+            return f"📦 {addr[0]}:{addr[1]} | <span style='color:#f44336;'>Hata: {str(e)}</span>"
+    
+    def _decode_opcode(self, op_code, parsed):
+        """Decode OpCode to human readable format."""
+        opcode_map = {
+            0x0031: "Tek Kanal Işık Kontrolü",
+            0x0032: "Tek Kanal Işık Geri Bildirimi",
+            0x0034: "Multi Kanal Durum",
+            0x2011: "Sensör Verileri",
+            0xEFFF: "Cihaz Durumu Sorgusu",
+            0xDA44: "Gateway Durumu",
+            0xF003: "Cihaz Keşif (Discovery Request)",
+            0xF004: "Cihaz Keşif Yanıtı (Discovery Response)",
+            0x0011: "Röle Kontrolü",
+            0x0012: "Röle Geri Bildirimi",
+            0x0021: "Dimmer Kontrolü",
+            0x0022: "Dimmer Geri Bildirimi",
+            0x0041: "RGB Kontrolü",
+            0x0042: "RGB Geri Bildirimi",
+        }
+        return opcode_map.get(op_code, f"Bilinmeyen OpCode")
+    
+    def _decode_packet_data(self, op_code, parsed):
+        """Decode packet specific data."""
+        try:
+            info = ""
+            additional_data = parsed.get('additional_data', b'')
+            
+            if op_code == 0x0031:  # Single Channel Light Control
+                if len(additional_data) >= 4:
+                    channel = additional_data[0]
+                    state = additional_data[1]
+                    info += f"<strong>Kanal:</strong> {channel} | <strong>Durum:</strong> {'Açık' if state else 'Kapalı'}<br>"
+            
+            elif op_code == 0x0032:  # Single Channel Light Feedback
+                if len(additional_data) >= 5:
+                    channel = additional_data[0]
+                    brightness = additional_data[1]
+                    info += f"<strong>Kanal:</strong> {channel} | <strong>Parlaklık:</strong> {brightness}%<br>"
+            
+            elif op_code == 0x0034:  # Multi Channel Status
+                if len(additional_data) >= 18:
+                    info += "<strong>Çoklu Kanal Durumu:</strong><br>"
+                    for i in range(min(8, len(additional_data))):
+                        if additional_data[i] > 0:
+                            info += f"  CH{i}: {additional_data[i]}% "
+                    info += "<br>"
+            
+            elif op_code == 0x2011:  # Sensor Data
+                info += "<strong>Sensör Verileri</strong> (Sıcaklık, Nem, vs.)<br>"
+            
+            elif op_code == 0xF003:
+                info += "<strong>Ağ taraması başlatıldı</strong><br>"
+            
+            elif op_code == 0xF004:
+                src_type = parsed.get('src_type', 0)
+                info += f"<strong>Cihaz Tipi ID:</strong> 0x{src_type:04X}<br>"
+            
+            return info
+            
+        except Exception as e:
+            return f"<span style='color:#f44336;'>Data decode hatası: {e}</span><br>"
 
     async def handle_add_device(self, request):
         """Handle add device to Home Assistant request."""
