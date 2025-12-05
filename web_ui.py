@@ -285,8 +285,6 @@ class TISWebUI:
                         <h1>TIS Akıllı Ev Yöneticisi</h1>
                     </div>
                     <div style="display: flex; gap: 10px; align-items: center;">
-                        <input type="text" id="gatewayInput" placeholder="Gateway IP (örn: 192.168.1.200)" 
-                               style="padding: 10px; border: 2px solid #667eea; border-radius: 8px; font-size: 14px; width: 200px;">
                         <button id="scanBtn" onclick="scanDevices()">🔍 Cihazları Tara</button>
                         <button id="debugBtn" onclick="toggleDebug()" style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);">🔧 Debug Tool</button>
                     </div>
@@ -296,8 +294,9 @@ class TISWebUI:
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <span style="font-size: 24px;">⚠️</span>
                         <div style="flex: 1;">
-                            <strong>Gateway IP Ayarlanmadı!</strong><br>
-                            <span style="font-size: 14px; color: #856404;">Yukarıdaki alana gateway IP adresini girin (örn: 192.168.1.200) ve "Cihazları Tara" butonuna basın.</span>
+                            <strong>Eklenti Yapılandırması Eksik</strong><br>
+                            <span style="font-size: 14px; color: #856404;">Gateway IP bilgileri girilmemiş. Lütfen addon ayarlarından Gateway IP adresini yapılandırın.<br>
+                            Settings → Add-ons → TIS Akıllı Ev Sistemi → Configuration → Gateway IP</span>
                         </div>
                     </div>
                 </div>
@@ -334,9 +333,6 @@ class TISWebUI:
                         const response = await fetch('/api/info');
                         const data = await response.json();
                         currentGatewayIP = data.gateway_ip || '';
-                        
-                        // Gateway input'a mevcut IP'yi yaz
-                        document.getElementById('gatewayInput').value = currentGatewayIP === '0.0.0.0' ? '' : currentGatewayIP;
                         
                         // Gateway IP yoksa veya 0.0.0.0 ise uyarı göster
                         if (!currentGatewayIP || currentGatewayIP === '0.0.0.0') {
@@ -439,13 +435,11 @@ class TISWebUI:
                     const btn = document.getElementById('scanBtn');
                     const status = document.getElementById('status');
                     const container = document.getElementById('devicesContainer');
-                    const gatewayInput = document.getElementById('gatewayInput');
                     const gatewayWarning = document.getElementById('gatewayWarning');
                     
-                    // Gateway IP kontrolü
-                    const gatewayIP = gatewayInput.value.trim();
-                    if (!gatewayIP || gatewayIP === '0.0.0.0') {
-                        status.innerText = '⚠️ Lütfen önce Gateway IP adresini girin!';
+                    // Gateway IP kontrolü - API'den al
+                    if (!currentGatewayIP || currentGatewayIP === '0.0.0.0') {
+                        status.innerText = '⚠️ Gateway IP yapılandırılmamış! Lütfen addon ayarlarını kontrol edin.';
                         status.style.background = '#ffebee';
                         status.style.borderColor = '#f44336';
                         status.style.color = '#c62828';
@@ -465,7 +459,7 @@ class TISWebUI:
                     container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⏳</div><p>Ağ taranıyor...</p></div>';
                     
                     try {
-                        const response = await fetch('/api/devices?gateway=' + encodeURIComponent(gatewayIP));
+                        const response = await fetch('/api/devices?gateway=' + encodeURIComponent(currentGatewayIP));
                         const devices = await response.json();
                         
                         status.innerText = `✅ Tarama tamamlandı: ${devices.length} cihaz bulundu`;
