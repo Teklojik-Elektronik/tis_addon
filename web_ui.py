@@ -70,17 +70,19 @@ class TISWebUI:
                 * { margin: 0; padding: 0; box-sizing: border-box; }
                 body { 
                     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    background: linear-gradient(135deg, #6B73FF 0%, #8B5CF6 100%);
                     min-height: 100vh;
-                    padding: 20px;
+                    padding: 0;
+                    margin: 0;
                 }
                 .container { 
-                    max-width: 1200px; 
-                    margin: 0 auto; 
+                    max-width: 100%; 
+                    margin: 0; 
                     background: white; 
-                    padding: 30px; 
-                    border-radius: 12px; 
-                    box-shadow: 0 10px 40px rgba(0,0,0,0.2); 
+                    padding: 20px 40px; 
+                    min-height: 100vh;
+                    border-radius: 0; 
+                    box-shadow: none; 
                 }
                 .container.full-width {
                     max-width: 100%;
@@ -91,30 +93,42 @@ class TISWebUI:
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    margin-bottom: 30px;
-                    padding-bottom: 20px;
-                    border-bottom: 3px solid #667eea;
+                    margin-bottom: 20px;
+                    padding-bottom: 15px;
+                    border-bottom: 1px solid #e0e0e0;
                 }
                 h1 { 
-                    color: #333; 
-                    font-size: 32px;
+                    color: #1a1a1a; 
+                    font-size: 24px;
+                    font-weight: 600;
+                    margin-left: 10px;
                 }
-                .logo { font-size: 48px; }
+                .logo { font-size: 42px; }
+                .header-left {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                }
+                .header-right {
+                    display: flex;
+                    gap: 10px;
+                    align-items: center;
+                }
                 button { 
-                    padding: 14px 28px; 
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    padding: 10px 20px; 
+                    background: linear-gradient(135deg, #6B73FF 0%, #8B5CF6 100%);
                     color: white; 
                     border: none; 
-                    border-radius: 8px; 
+                    border-radius: 6px; 
                     cursor: pointer; 
-                    font-size: 16px; 
+                    font-size: 14px; 
                     font-weight: 600;
-                    transition: all 0.3s; 
-                    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+                    transition: all 0.2s; 
+                    box-shadow: 0 2px 8px rgba(107, 115, 255, 0.3);
                 }
                 button:hover { 
-                    transform: translateY(-2px);
-                    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 12px rgba(107, 115, 255, 0.4);
                 }
                 button:active { transform: translateY(0); }
                 button:disabled { 
@@ -122,103 +136,155 @@ class TISWebUI:
                     cursor: not-allowed; 
                     box-shadow: none;
                 }
+                .btn-scan {
+                    background: linear-gradient(135deg, #6B73FF 0%, #8B5CF6 100%);
+                }
+                .btn-debug {
+                    background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+                    box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+                }
                 .status { 
-                    margin: 20px 0; 
-                    padding: 15px; 
-                    background: #e3f2fd; 
-                    border-left: 4px solid #2196f3;
-                    border-radius: 4px;
-                    font-weight: 500;
+                    margin: 15px 0; 
+                    padding: 12px 15px; 
+                    background: #e8f4fd; 
+                    border: 1px solid #90caf9;
+                    border-radius: 6px;
+                    font-weight: 400;
+                    font-size: 14px;
                     color: #1976d2;
+                }
+                .info-box {
+                    margin: 15px 0;
+                    padding: 15px;
+                    background: #e8f4fd;
+                    border: 1px solid #90caf9;
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 12px;
+                }
+                .info-box-icon {
+                    font-size: 24px;
+                    flex-shrink: 0;
+                }
+                .info-box-content {
+                    flex: 1;
+                }
+                .info-box-content strong {
+                    display: block;
+                    color: #1976d2;
+                    font-size: 14px;
+                    margin-bottom: 5px;
+                }
+                .info-box-content span {
+                    font-size: 13px;
+                    color: #555;
+                    line-height: 1.5;
                 }
                 .devices-grid {
                     display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-                    gap: 20px;
-                    margin-top: 20px;
+                    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+                    gap: 15px;
+                    margin-top: 15px;
                 }
                 .device-card {
                     background: #fff;
-                    border: 2px solid #e0e0e0;
-                    border-radius: 12px;
-                    padding: 20px;
-                    transition: all 0.3s;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                }
-                .device-card:hover {
-                    border-color: #667eea;
-                    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
-                    transform: translateY(-4px);
-                }
-                .device-card.added {
-                    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
-                    border: 2px solid #4CAF50;
-                }
-                .device-card.added .device-header {
+                    border: 1px solid #e0e0e0;
+                    border-radius: 8px;
+                    padding: 18px;
+                    transition: all 0.2s;
+                    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
                     position: relative;
                 }
-                .device-card.added .device-header::after {
+                .device-card:hover {
+                    border-color: #6B73FF;
+                    box-shadow: 0 4px 12px rgba(107, 115, 255, 0.15);
+                    transform: translateY(-2px);
+                }
+                .device-card.added {
+                    background: #f1f8f4;
+                    border: 2px solid #4CAF50;
+                }
+                .device-card.added::before {
                     content: '✓ Eklenmiş';
                     position: absolute;
-                    top: -10px;
-                    right: -10px;
+                    top: -8px;
+                    right: 10px;
                     background: #4CAF50;
                     color: white;
-                    padding: 4px 12px;
+                    padding: 4px 10px;
                     border-radius: 12px;
-                    font-size: 12px;
-                    font-weight: bold;
-                    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+                    font-size: 11px;
+                    font-weight: 600;
+                    box-shadow: 0 2px 6px rgba(76, 175, 80, 0.3);
+                    z-index: 10;
                 }
                 .device-header {
                     display: flex;
                     justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 15px;
+                    align-items: flex-start;
+                    margin-bottom: 12px;
                 }
                 .device-name {
-                    font-size: 18px;
+                    font-size: 16px;
                     font-weight: 600;
-                    color: #333;
+                    color: #1a1a1a;
+                    flex: 1;
                 }
                 .device-icon {
-                    font-size: 32px;
+                    font-size: 36px;
+                    line-height: 1;
                 }
                 .device-info {
-                    margin: 10px 0;
-                    color: #666;
-                    font-size: 14px;
+                    margin: 8px 0;
+                    color: #555;
+                    font-size: 13px;
+                    line-height: 1.6;
                 }
                 .device-info strong {
-                    color: #333;
+                    color: #1a1a1a;
+                    font-weight: 600;
                 }
                 .device-controls {
-                    margin-top: 15px;
-                    padding-top: 15px;
+                    margin-top: 12px;
+                    padding-top: 12px;
                     border-top: 1px solid #e0e0e0;
                     display: flex;
-                    gap: 10px;
+                    gap: 8px;
                 }
                 .btn-control {
                     flex: 1;
-                    padding: 10px;
-                    font-size: 14px;
+                    padding: 8px 12px;
+                    font-size: 13px;
+                    font-weight: 600;
                 }
                 .btn-on {
-                    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+                    background: #4CAF50;
+                    box-shadow: 0 2px 6px rgba(76, 175, 80, 0.3);
+                }
+                .btn-on:hover {
+                    background: #45a049;
                 }
                 .btn-off {
-                    background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+                    background: #f44336;
+                    box-shadow: 0 2px 6px rgba(244, 67, 54, 0.3);
+                }
+                .btn-off:hover {
+                    background: #d32f2f;
+                }
+                .btn-add {
+                    background: #2196F3;
+                    box-shadow: 0 2px 6px rgba(33, 150, 243, 0.3);
+                }
+                .btn-add:hover {
+                    background: #1976D2;
                 }
                 .btn-remove {
-                    background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
-                    border: 2px solid #d32f2f;
+                    background: #f44336;
+                    box-shadow: 0 2px 6px rgba(244, 67, 54, 0.3);
                 }
                 .btn-remove:hover {
-                    background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
-                    border-color: #b71c1c;
-                    transform: translateY(-1px);
-                    box-shadow: 0 6px 20px rgba(244, 67, 54, 0.4);
+                    background: #d32f2f;
                 }
                 .empty-state {
                     text-align: center;
@@ -280,24 +346,36 @@ class TISWebUI:
         <body>
             <div class="container">
                 <header>
-                    <div>
+                    <div class="header-left">
                         <div class="logo">🏠</div>
                         <h1>TIS Akıllı Ev Yöneticisi</h1>
                     </div>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <button id="scanBtn" onclick="scanDevices()">🔍 Cihazları Tara</button>
-                        <button id="debugBtn" onclick="toggleDebug()" style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);">🔧 Debug Tool</button>
+                    <div class="header-right">
+                        <button id="scanBtn" class="btn-scan" onclick="scanDevices()">🔍 Cihazları Tara</button>
+                        <button id="debugBtn" class="btn-debug" onclick="toggleDebug()">🔧 Debug Tool</button>
                     </div>
                 </header>
                 
-                <div id="gatewayWarning" style="display: none; background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+                <div id="gatewayWarning" style="display: none; background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <span style="font-size: 24px;">⚠️</span>
                         <div style="flex: 1;">
                             <strong>Eklenti Yapılandırması Eksik</strong><br>
-                            <span style="font-size: 14px; color: #856404;">Gateway IP bilgileri girilmemiş. Lütfen addon ayarlarından Gateway IP adresini yapılandırın.<br>
+                            <span style="font-size: 13px; color: #856404;">Gateway IP bilgileri girilmemiş. Lütfen addon ayarlarından Gateway IP adresini yapılandırın.<br>
                             Settings → Add-ons → TIS Akıllı Ev Sistemi → Configuration → Gateway IP</span>
                         </div>
+                    </div>
+                </div>
+                
+                <!-- Bilgi Mesajı (TIS DevSearch Stilinde) -->
+                <div class="info-box">
+                    <div class="info-box-icon">✅</div>
+                    <div class="info-box-content">
+                        <strong>Cihaz eklendi: TIS-4CH-AIN (1.109)</strong>
+                        <span>
+                            🔍 Sensörleri görüntülemek için TIS entegrasyonunu manuel yenileyin:<br>
+                            <strong>Settings → Integrations → TIS → ⋮ → Reload</strong>
+                        </span>
                     </div>
                 </div>
                 
@@ -497,8 +575,7 @@ class TISWebUI:
                         `;
                     } else {
                         actionButton = `
-                            <button class="btn-control" 
-                                    style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);"
+                            <button class="btn-control btn-add" 
                                     onclick="addDevice(${dev.subnet}, ${dev.device}, '${dev.model_name}', ${dev.channels}, '${dev.name}')">
                                 ➕ Ekle
                             </button>
