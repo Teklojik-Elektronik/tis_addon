@@ -161,6 +161,26 @@ Debug modu aktifken sayfa tam ekran genişliğinde olacaktır. **"⏹️ Debug D
 - Addon sayfasında **Log** sekmesine tıklayın
 - Detaylı hata mesajları için logları inceleyin
 
+## 🗑️ Kaldırma ve Temizlik
+
+### Addon Kaldırma
+1. **Settings** → **Add-ons** → **TIS Akıllı Ev Sistemi**
+2. **⋮** → **Uninstall**
+3. Addon kaldırılır ama `/config/tis_devices.json` dosyası kalır
+
+### Entegrasyon Kaldırma (TAM TEMİZLİK)
+1. **Settings** → **Integrations** → **TIS Control**
+2. **⋮** → **Delete**
+3. ✅ Otomatik temizlik yapılır:
+   - Tüm TIS cihazları silinir
+   - `/config/tis_devices.json` dosyası silinir
+   - Yedek oluşturulur: `/config/tis_devices.json.backup`
+
+**⚠️ ÖNEMLİ:** 
+- Önce entegrasyonu silin (tam temizlik için)
+- Sonra addon'u kaldırın
+- Veya sadece addon'u kaldırırsanız, `/config/tis_devices.json` manuel silebilirsiniz
+
 ## 📄 Lisans
 
 MIT License
@@ -171,5 +191,5 @@ Pull request'ler ve issue'lar memnuniyetle karşılanır!
 
 ## 📞 İletişim
 
-- GitHub: [yourusername/tis-homeassistant-addon](https://github.com/yourusername/tis-homeassistant-addon)
-- Issues: [Report a bug](https://github.com/yourusername/tis-homeassistant-addon/issues)
+- GitHub: [Teklojik-Elektronik/tis_addon](https://github.com/Teklojik-Elektronik/tis_addon)
+- Issues: [Report a bug](https://github.com/Teklojik-Elektronik/tis_addon/issues)
