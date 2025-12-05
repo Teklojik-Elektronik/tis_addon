@@ -817,15 +817,18 @@ class TISWebUI:
             elif op_code == 0x0032:  # Single Channel Light Feedback
                 if len(additional_data) >= 5:
                     channel = additional_data[0]
-                    brightness = additional_data[1]
-                    info += f"<strong>Kanal:</strong> {channel} | <strong>Parlaklık:</strong> {brightness}%<br>"
+                    brightness_raw = additional_data[1]
+                    # TIS uses 0-248 scale for 0-100%
+                    brightness_pct = int((brightness_raw / 248.0) * 100)
+                    info += f"<strong>Kanal:</strong> {channel} | <strong>Parlaklık:</strong> {brightness_pct}% (raw: {brightness_raw})<br>"
             
             elif op_code == 0x0034:  # Multi Channel Status
                 if len(additional_data) >= 18:
                     info += "<strong>Çoklu Kanal Durumu:</strong><br>"
                     for i in range(min(8, len(additional_data))):
                         if additional_data[i] > 0:
-                            info += f"  CH{i}: {additional_data[i]}% "
+                            brightness_pct = int((additional_data[i] / 248.0) * 100)
+                            info += f"  CH{i}: {brightness_pct}% "
                     info += "<br>"
             
             elif op_code == 0x2011:  # Sensor Data
