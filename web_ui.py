@@ -566,11 +566,17 @@ class TISWebUI:
                     }
 
                     try {
+                        console.log(`🚀 Starting device add: ${deviceName} (${subnet}.${deviceId})`);
+                        console.log(`📊 Model: ${modelName}, Channels: ${channels}`);
+                        
                         // Show progress message immediately
                         document.getElementById('statusText').innerText = `⏳ Adding ${deviceName}... (querying ${channels} channel names, please wait 20-30s)`;
+                        console.log('⏳ Status: Sending add_device request...');
                         
                         // Skip query_device step - it's unnecessary and just sends packets without waiting for response
                         // Go directly to add_device which does all the real work
+                        
+                        const startTime = Date.now();
                         
                         // Add device (LONG operation - 15-20 seconds)
                         // No timeout on fetch - let it complete naturally
@@ -586,8 +592,14 @@ class TISWebUI:
                             })
                         });
                         
+                        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                        console.log(`⏱️ Request completed in ${elapsed}s`);
+                        
                         const result = await response.json();
+                        console.log('📥 Server response:', result);
+                        
                         if (result.success) {
+                            console.log('✅ Device added successfully!');
                             alert('✅ Device added successfully!\\n\\n' + result.message);
                             document.getElementById('statusText').innerText = '✅ ' + result.message;
                             // Update table row
@@ -607,9 +619,11 @@ class TISWebUI:
                                 `;
                             }
                         } else {
+                            console.error('❌ Device add failed:', result.message);
                             alert('❌ Error: ' + result.message);
                         }
                     } catch (err) {
+                        console.error('❌ Exception during device add:', err);
                         alert('❌ Error: ' + err.message);
                     }
                 }
