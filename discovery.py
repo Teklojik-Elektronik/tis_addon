@@ -281,136 +281,132 @@ class TISDiscovery:
 async def query_all_channel_names(gateway_ip: str, subnet: int, device_id: int, channels: int = 24, udp_port: int = 6000) -> Dict[str, str]:
     """Query all channel names with strict response validation.
     
-    CRITICAL: Device may respond out of order, send 0xFF for undefined channels,
-    or respond slowly. We must validate each response matches the query channel number.
+    STRATEGY: Use SINGLE socket for all queries to avoid port conflicts.
+    Send all queries first, then collect responses with channel validation.
     """
     import asyncio
     from tis_protocol import TISUDPClient
     
     _LOGGER.info(f"🔍 Starting channel name query for {subnet}.{device_id}")
     channel_names = {}
+    received_channels = set()
     
-    for channel in range(1, channels + 1):
-        retry_count = 0
-        max_retries = 4  # Increased retries for slow devices
-        success = False
+    client = None
+    try:
+        # Single socket for all operations
+        client = TISUDPClient(gateway_ip, udp_port)
+        await client.async_connect(bind=True)  # Bind to receive
+        client.sock.setblocking(False)  # Non-blocking mode
         
-        while retry_count < max_retries and not success:
-            client = None
+        # Get local IP for SMARTCLOUD header
+        local_ip = get_local_ip()
+        ip_bytes = bytes([int(x) for x in local_ip.split('.')])
+        
+        # PHASE 1: Send all queries with delays
+        _LOGGER.info(f"📤 Sending queries for {channels} channels...")
+        for channel in range(1, channels + 1):
+            packet = TISPacket()
+            packet.src_subnet = 1
+            packet.src_device = 254
+            packet.src_type = 0xFFFE
+            packet.tgt_subnet = subnet
+            packet.tgt_device = device_id
+            packet.op_code = 0xF00E
+            packet.additional_data = bytes([channel])  # 1-24 format
+            
+            tis_data = packet.build()
+            full_packet = ip_bytes + b'SMARTCLOUD' + tis_data
+            
+            client.send_to(full_packet, gateway_ip)
+            _LOGGER.debug(f"📤 Query CH{channel}")
+            
+            # Small delay between queries to avoid flooding
+            await asyncio.sleep(0.15)
+        
+        # PHASE 2: Collect responses (up to 15 seconds total)
+        _LOGGER.info(f"📥 Collecting responses...")
+        timeout = 15.0
+        start_time = asyncio.get_event_loop().time()
+        last_response_time = start_time
+        
+        while asyncio.get_event_loop().time() - start_time < timeout:
             try:
-                client = TISUDPClient(gateway_ip, udp_port)
-                await client.async_connect(bind=False)
+                # Try to receive data
+                data, addr = await asyncio.wait_for(
+                    client.sock.recvfrom(1024),
+                    timeout=0.3
+                )
                 
-                # Get local IP for SMARTCLOUD header
-                local_ip = get_local_ip()
-                ip_bytes = bytes([int(x) for x in local_ip.split('.')])
+                last_response_time = asyncio.get_event_loop().time()
                 
-                # Build OpCode 0xF00E query (channel name query)
-                # IMPORTANT: Protocol uses 1-24 channel numbers (NOT 0-indexed!)
-                packet = TISPacket()
-                packet.src_subnet = 1
-                packet.src_device = 254
-                packet.src_type = 0xFFFE
-                packet.tgt_subnet = subnet
-                packet.tgt_device = device_id
-                packet.op_code = 0xF00E
-                packet.additional_data = bytes([channel])  # 1-24 format
+                # Parse response
+                if b'SMARTCLOUD' in data:
+                    idx = data.find(b'SMARTCLOUD')
+                    tis_data = data[idx + 10:]
+                else:
+                    tis_data = data
                 
-                tis_data = packet.build()
-                full_packet = ip_bytes + b'SMARTCLOUD' + tis_data
+                parsed = TISPacket.parse(tis_data)
                 
-                # Send query
-                client.send_to(full_packet, gateway_ip)
-                _LOGGER.debug(f"📤 Query CH{channel} (attempt {retry_count + 1}/{max_retries})")
-                
-                # Wait for THIS channel's response (validate channel number in response)
-                response_timeout = 3.0  # Longer timeout for slow devices
-                start_time = asyncio.get_event_loop().time()
-                
-                while asyncio.get_event_loop().time() - start_time < response_timeout:
-                    try:
-                        # Short timeout for each receive attempt
-                        data, addr = await asyncio.wait_for(
-                            client.sock.recvfrom(1024),
-                            timeout=0.5
-                        )
+                if parsed and parsed['op_code'] == 0xF00F:
+                    if len(parsed['additional_data']) >= 1:
+                        resp_channel = parsed['additional_data'][0]
                         
-                        # Parse response
-                        if b'SMARTCLOUD' in data:
-                            idx = data.find(b'SMARTCLOUD')
-                            tis_data = data[idx + 10:]
-                        else:
-                            tis_data = data
+                        # Check if we already processed this channel
+                        if resp_channel in received_channels:
+                            continue
                         
-                        parsed = TISPacket.parse(tis_data)
-                        
-                        if parsed and parsed['op_code'] == 0xF00F:
-                            if len(parsed['additional_data']) >= 1:
-                                resp_channel = parsed['additional_data'][0]
-                                
-                                # CRITICAL: Verify this is OUR channel's response
-                                if resp_channel != channel:
-                                    _LOGGER.warning(f"⚠️ CH{channel} query got CH{resp_channel} response (out of order), ignoring")
-                                    continue  # Keep waiting for correct channel
-                                
-                                # This is our channel, process it
-                                if len(parsed['additional_data']) >= 2:
-                                    name_bytes = parsed['additional_data'][1:]
+                        if len(parsed['additional_data']) >= 2:
+                            name_bytes = parsed['additional_data'][1:]
+                            
+                            # Check if undefined (0xFF pattern or empty)
+                            if len(name_bytes) == 0 or name_bytes[0] == 0xFF:
+                                _LOGGER.debug(f"CH{resp_channel}: undefined")
+                                received_channels.add(resp_channel)
+                            else:
+                                # Decode UTF-8 name
+                                try:
+                                    null_idx = name_bytes.find(b'\x00')
+                                    if null_idx > 0:
+                                        name_bytes = name_bytes[:null_idx]
                                     
-                                    # Check if undefined (0xFF pattern or empty)
-                                    if len(name_bytes) == 0 or name_bytes[0] == 0xFF:
-                                        _LOGGER.debug(f"CH{channel}: undefined (0xFF or empty)")
-                                        success = True  # Valid response, just no name
-                                        break
-                                    
-                                    # Decode UTF-8 name
-                                    try:
-                                        # Find null terminator
-                                        null_idx = name_bytes.find(b'\x00')
-                                        if null_idx > 0:
-                                            name_bytes = name_bytes[:null_idx]
+                                    channel_name = name_bytes.decode('utf-8').strip()
+                                    if channel_name:
+                                        channel_names[str(resp_channel)] = channel_name
+                                        received_channels.add(resp_channel)
+                                        _LOGGER.info(f"✅ CH{resp_channel}: '{channel_name}'")
+                                    else:
+                                        received_channels.add(resp_channel)
                                         
-                                        channel_name = name_bytes.decode('utf-8').strip()
-                                        if channel_name:
-                                            channel_names[str(channel)] = channel_name
-                                            _LOGGER.info(f"✅ CH{channel}: '{channel_name}'")
-                                        else:
-                                            _LOGGER.debug(f"CH{channel}: empty name")
-                                        
-                                        success = True
-                                        break
-                                        
-                                    except Exception as decode_err:
-                                        _LOGGER.warning(f"⚠️ CH{channel} decode error: {decode_err}")
-                                        success = True  # Don't retry on decode errors
-                                        break
-                        
-                    except asyncio.TimeoutError:
-                        # No data in this 0.5s window, continue waiting
-                        continue
+                                except Exception as decode_err:
+                                    _LOGGER.warning(f"⚠️ CH{resp_channel} decode error: {decode_err}")
+                                    received_channels.add(resp_channel)
                 
-                if not success:
-                    _LOGGER.warning(f"⏱️ CH{channel} timeout, retry {retry_count + 1}/{max_retries}")
-                    retry_count += 1
-                
-            except Exception as e:
-                _LOGGER.error(f"❌ CH{channel} error: {e}")
-                retry_count += 1
-                
-            finally:
-                if client:
-                    try:
-                        client.close()
-                    except:
-                        pass
-                
-                if not success and retry_count < max_retries:
-                    await asyncio.sleep(0.8)  # Longer delay before retry
+                # If we got all channels, break early
+                if len(received_channels) >= channels:
+                    _LOGGER.info(f"🎉 All {channels} channels received!")
+                    break
+                    
+            except asyncio.TimeoutError:
+                # No data in this window
+                # If no response for 3 seconds, stop waiting
+                if asyncio.get_event_loop().time() - last_response_time > 3.0:
+                    _LOGGER.info(f"⏱️ No response for 3s, stopping collection")
+                    break
+                continue
         
-        # Delay between channels to avoid overwhelming device
-        await asyncio.sleep(0.4)
+        _LOGGER.info(f"🎯 Query complete: {len(channel_names)}/{channels} names, {len(received_channels)} responses")
+        
+    except Exception as e:
+        _LOGGER.error(f"❌ Channel name query error: {e}")
+        
+    finally:
+        if client:
+            try:
+                client.close()
+            except:
+                pass
     
-    _LOGGER.info(f"🎯 Channel name query complete: {len(channel_names)}/{channels} names found")
     return channel_names
 
 
@@ -436,7 +432,8 @@ async def query_device_initial_states(gateway_ip: str, subnet: int, device_id: i
         client = None
         try:
             client = TISUDPClient(gateway_ip, udp_port)
-            await client.async_connect(bind=False)
+            await client.async_connect(bind=True)
+            client.sock.setblocking(False)
             
             # Get local IP for SMARTCLOUD header
             local_ip = get_local_ip()
@@ -460,7 +457,7 @@ async def query_device_initial_states(gateway_ip: str, subnet: int, device_id: i
             _LOGGER.debug(f"📤 Sent OpCode 0x0033 (state query)")
             
             # Wait for OpCode 0x0034 response
-            response_timeout = 3.0
+            response_timeout = 5.0
             start_time = asyncio.get_event_loop().time()
             
             while asyncio.get_event_loop().time() - start_time < response_timeout:
@@ -499,7 +496,6 @@ async def query_device_initial_states(gateway_ip: str, subnet: int, device_id: i
                                 }
                             
                             _LOGGER.info(f"✅ Got {len(states)} channel states")
-                            client.close()
                             return states
                         else:
                             _LOGGER.warning(f"⚠️ Invalid state response: {len(state_bytes)} bytes (expected {channels})")
