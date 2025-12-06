@@ -484,13 +484,14 @@ async def query_device_initial_states(gateway_ip: str, subnet: int, device_id: i
                     parsed = TISPacket.parse(tis_data)
                     
                     if parsed and parsed['op_code'] == 0x0034:
-                        # Response contains 24 bytes (one per channel)
+                        # Response format: additional_data[0] = channel_count, additional_data[1..24] = channel states
                         state_bytes = parsed.get('additional_data', bytes())
                         
-                        if len(state_bytes) >= channels:
+                        # First byte is channel count, skip it
+                        if len(state_bytes) >= channels + 1:
                             states = {}
                             for ch in range(channels):
-                                raw_value = state_bytes[ch]
+                                raw_value = state_bytes[ch + 1]  # Skip first byte (channel count)
                                 
                                 # Convert to state info
                                 is_on = raw_value > 0
@@ -505,7 +506,7 @@ async def query_device_initial_states(gateway_ip: str, subnet: int, device_id: i
                             _LOGGER.info(f"✅ Got {len(states)} channel states")
                             return states
                         else:
-                            _LOGGER.warning(f"⚠️ Invalid state response: {len(state_bytes)} bytes (expected {channels})")
+                            _LOGGER.warning(f"⚠️ Invalid state response: {len(state_bytes)} bytes (expected {channels + 1})")
                 
                 except asyncio.TimeoutError:
                     continue

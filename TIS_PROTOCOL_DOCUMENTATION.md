@@ -57,13 +57,16 @@ additional_data[3+] = Rezerve/kullanılmıyor
 ### OpCode 0x0034 (Çok Kanallı Durum) Paket Yapısı
 
 ```
-additional_data[0]  = CH0 parlaklığı (0-248)
+additional_data[0]  = Kanal sayısı (örn: 0x18 = 24)
 additional_data[1]  = CH1 parlaklığı (0-248)
+additional_data[2]  = CH2 parlaklığı (0-248)
 ...
-additional_data[23] = CH23 parlaklığı (0-248)
+additional_data[24] = CH24 parlaklığı (0-248)
 ```
 
-Toplam: 24 byte, kanal başına bir
+**Toplam: 25 byte** (1 byte kanal sayısı + 24 byte durum)
+
+**ÖNEMLİ:** İlk byte'ı atla, kanal durumları byte 1'den başlar!
 
 ### OpCode 0xF00F (Kanal Adı) Paket Yapısı
 
