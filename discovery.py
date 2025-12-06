@@ -277,3 +277,87 @@ class TISDiscovery:
         # Run in executor to not block event loop
         return await loop.run_in_executor(None, discovery_worker)
 
+
+async def query_device_initial_states(gateway_ip: str, subnet: int, device_id: int, udp_port: int = 6000) -> Dict[str, Dict]:
+    """Query device channel states with OpCode 0x0033, return initial states."""
+    import asyncio
+    from tis_protocol import TISUDPClient
+    
+    try:
+        client = TISUDPClient(gateway_ip, udp_port)
+        await client.async_connect(bind=False)
+        
+        # Get local IP for SMARTCLOUD header
+        local_ip = get_local_ip()
+        ip_bytes = bytes([int(x) for x in local_ip.split('.')])
+        
+        # Build OpCode 0x0033 query (multi-channel status query)
+        packet = TISPacket()
+        packet.src_subnet = 1
+        packet.src_device = 254
+        packet.src_type = 0xFFFE
+        packet.tgt_subnet = subnet
+        packet.tgt_device = device_id
+        packet.op_code = 0x0033
+        packet.additional_data = bytes([])
+        
+        tis_data = packet.build()
+        full_packet = ip_bytes + b'SMARTCLOUD' + tis_data
+        
+        # Send query
+        client.send_to(full_packet, gateway_ip)
+        _LOGGER.info(f"Sent OpCode 0x0033 to {subnet}.{device_id}")
+        
+        # Wait for response (OpCode 0x0034)
+        await asyncio.sleep(0.5)
+        
+        try:
+            data, addr = await asyncio.wait_for(
+                client.sock.recvfrom(1024), 
+                timeout=2.0
+            )
+            
+            _LOGGER.debug(f"Received {len(data)} bytes from {addr}")
+            
+            # Parse OpCode 0x0034
+            if b'SMARTCLOUD' in data:
+                idx = data.find(b'SMARTCLOUD')
+                tis_data = data[idx + 10:]
+            else:
+                tis_data = data
+            
+            parsed = TISPacket.parse(tis_data)
+            
+            if parsed and parsed['op_code'] == 0x0034:
+                _LOGGER.info(f"Received OpCode 0x0034 from {parsed['src_subnet']}.{parsed['src_device']}")
+                
+                # Extract channel states (0-23 → channels 1-24)
+                channel_states = {}
+                for ch in range(1, 25):
+                    idx = ch - 1
+                    if idx < len(parsed['additional_data']):
+                        brightness_raw = parsed['additional_data'][idx]
+                        brightness_pct = int((brightness_raw / 248.0) * 100)
+                        channel_states[str(ch)] = {
+                            'is_on': brightness_raw > 0,
+                            'brightness': brightness_pct,
+                            'raw': brightness_raw
+                        }
+                        if brightness_raw > 0:
+                            _LOGGER.debug(f"  CH{ch}: ON ({brightness_pct}%)")
+                
+                client.close()
+                return channel_states
+            else:
+                _LOGGER.warning(f"Expected OpCode 0x0034, got 0x{parsed['op_code']:04X}" if parsed else "Parse failed")
+        
+        except asyncio.TimeoutError:
+            _LOGGER.warning(f"Timeout waiting for OpCode 0x0034 from {subnet}.{device_id}")
+        
+        client.close()
+        return {}
+        
+    except Exception as e:
+        _LOGGER.error(f"Error querying initial states for {subnet}.{device_id}: {e}")
+        return {}
+
