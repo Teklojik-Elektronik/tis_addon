@@ -561,14 +561,14 @@ class TISWebUI:
                 }
 
                 async function addDevice(subnet, deviceId, modelName, channels, deviceName) {
-                    if (!confirm(`Add device to Home Assistant?\\n\\n${deviceName}`)) {
+                    if (!confirm(`Add device to Home Assistant?\\n\\n${deviceName}\\n\\nNote: This may take 20-30 seconds to query all channel names.`)) {
                         return;
                     }
 
                     try {
                         document.getElementById('statusText').innerText = `🔍 Querying device: ${deviceName}...`;
                         
-                        // Query device first
+                        // Query device first (quick, no timeout needed)
                         const queryResponse = await fetch('/api/query_device', {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
@@ -583,7 +583,11 @@ class TISWebUI:
                             console.warn('Device query failed:', queryResult.message);
                         }
                         
-                        // Add device
+                        // Show progress message
+                        document.getElementById('statusText').innerText = `⏳ Adding ${deviceName}... (querying ${channels} channel names, please wait 20-30s)`;
+                        
+                        // Add device (LONG operation - 15-20 seconds)
+                        // No timeout on fetch - let it complete naturally
                         const response = await fetch('/api/add_device', {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
