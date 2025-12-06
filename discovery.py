@@ -352,16 +352,23 @@ async def query_all_channel_names(gateway_ip: str, subnet: int, device_id: int, 
                     if len(parsed['additional_data']) >= 1:
                         resp_channel = parsed['additional_data'][0]
                         
+                        # DEBUG: Log all responses
+                        _LOGGER.info(f"📨 Response OpCode 0xF00F: CH{resp_channel}, data_len={len(parsed['additional_data'])}")
+                        
                         # Check if we already processed this channel
                         if resp_channel in received_channels:
+                            _LOGGER.warning(f"⚠️ Duplicate response for CH{resp_channel}, ignoring")
                             continue
                         
                         if len(parsed['additional_data']) >= 2:
                             name_bytes = parsed['additional_data'][1:]
                             
+                            # DEBUG: Log raw bytes
+                            _LOGGER.debug(f"CH{resp_channel} raw bytes: {name_bytes.hex()}")
+                            
                             # Check if undefined (0xFF pattern or empty)
                             if len(name_bytes) == 0 or name_bytes[0] == 0xFF:
-                                _LOGGER.debug(f"CH{resp_channel}: undefined")
+                                _LOGGER.debug(f"CH{resp_channel}: undefined (0xFF)")
                                 received_channels.add(resp_channel)
                             else:
                                 # Decode UTF-8 name
