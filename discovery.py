@@ -326,18 +326,18 @@ async def query_all_channel_names(gateway_ip: str, subnet: int, device_id: int, 
         # PHASE 2: Collect responses (up to 15 seconds total)
         _LOGGER.info(f"📥 Collecting responses...")
         timeout = 15.0
-        start_time = asyncio.get_event_loop().time()
+        start_time = time.time()
         last_response_time = start_time
         
-        while asyncio.get_event_loop().time() - start_time < timeout:
+        while time.time() - start_time < timeout:
             try:
                 # Try to receive data
                 data, addr = await asyncio.wait_for(
-                    client.sock.recvfrom(1024),
+                    asyncio.get_event_loop().sock_recvfrom(client.sock, 1024),
                     timeout=0.3
                 )
                 
-                last_response_time = asyncio.get_event_loop().time()
+                last_response_time = time.time()
                 
                 # Parse response
                 if b'SMARTCLOUD' in data:
@@ -390,7 +390,7 @@ async def query_all_channel_names(gateway_ip: str, subnet: int, device_id: int, 
             except asyncio.TimeoutError:
                 # No data in this window
                 # If no response for 3 seconds, stop waiting
-                if asyncio.get_event_loop().time() - last_response_time > 3.0:
+                if time.time() - last_response_time > 3.0:
                     _LOGGER.info(f"⏱️ No response for 3s, stopping collection")
                     break
                 continue
@@ -458,12 +458,12 @@ async def query_device_initial_states(gateway_ip: str, subnet: int, device_id: i
             
             # Wait for OpCode 0x0034 response
             response_timeout = 5.0
-            start_time = asyncio.get_event_loop().time()
+            start_time = time.time()
             
-            while asyncio.get_event_loop().time() - start_time < response_timeout:
+            while time.time() - start_time < response_timeout:
                 try:
                     data, addr = await asyncio.wait_for(
-                        client.sock.recvfrom(1024),
+                        asyncio.get_event_loop().sock_recvfrom(client.sock, 1024),
                         timeout=0.5
                     )
                     
