@@ -566,25 +566,11 @@ class TISWebUI:
                     }
 
                     try {
-                        document.getElementById('statusText').innerText = `🔍 Querying device: ${deviceName}...`;
-                        
-                        // Query device first (quick, no timeout needed)
-                        const queryResponse = await fetch('/api/query_device', {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({
-                                subnet: subnet,
-                                device_id: deviceId
-                            })
-                        });
-                        
-                        const queryResult = await queryResponse.json();
-                        if (!queryResult.success) {
-                            console.warn('Device query failed:', queryResult.message);
-                        }
-                        
-                        // Show progress message
+                        // Show progress message immediately
                         document.getElementById('statusText').innerText = `⏳ Adding ${deviceName}... (querying ${channels} channel names, please wait 20-30s)`;
+                        
+                        // Skip query_device step - it's unnecessary and just sends packets without waiting for response
+                        // Go directly to add_device which does all the real work
                         
                         // Add device (LONG operation - 15-20 seconds)
                         // No timeout on fetch - let it complete naturally
