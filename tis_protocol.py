@@ -183,6 +183,16 @@ class TISUDPClient:
         try:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            
+            # CRITICAL: SO_REUSEPORT for sharing port 6000 with Home Assistant
+            # Linux/Docker container needs this to allow multiple apps on same port
+            if hasattr(socket, 'SO_REUSEPORT'):
+                try:
+                    self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+                    _LOGGER.debug("SO_REUSEPORT enabled")
+                except Exception as e:
+                    _LOGGER.warning(f"SO_REUSEPORT not available: {e}")
+            
             self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
             self.sock.settimeout(1.0)
             
