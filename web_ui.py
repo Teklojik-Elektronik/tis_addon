@@ -7,7 +7,7 @@ import json
 import socket
 import time
 from aiohttp import web
-from discovery import discover_tis_devices, get_local_ip
+from discovery import discover_tis_devices, get_local_ip, query_all_channel_names, query_device_initial_states
 from tis_protocol import TISProtocol, TISPacket, TISUDPClient
 
 _LOGGER = logging.getLogger(__name__)
