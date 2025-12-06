@@ -1169,6 +1169,8 @@ class TISWebUI:
             
             # Query channel names from device BEFORE saving
             channel_names = {}
+            initial_states = {}
+            
             if channels > 1:  # Only for multi-channel devices
                 try:
                     _LOGGER.info(f"Querying channel names for {subnet}.{device_id}...")
@@ -1177,9 +1179,18 @@ class TISWebUI:
                 except Exception as e:
                     _LOGGER.error(f"Failed to query channel names: {e}", exc_info=True)
                     # Continue without channel names
+                
+                # Query initial states for all channels
+                try:
+                    _LOGGER.info(f"Querying initial states for {subnet}.{device_id}...")
+                    initial_states = await self._query_initial_states(subnet, device_id, channels)
+                    _LOGGER.info(f"Received states for {len(initial_states)} channels")
+                except Exception as e:
+                    _LOGGER.error(f"Failed to query initial states: {e}", exc_info=True)
+                    # Continue without initial states
             else:
-                _LOGGER.warning(f"⚠️ Channels = {channels}, skipping channel name query (expected > 1)")
-                _LOGGER.debug(f"Single channel device, skipping channel name query")
+                _LOGGER.warning(f"⚠️ Channels = {channels}, skipping queries (expected > 1)")
+                _LOGGER.debug(f"Single channel device, skipping queries")
             
             unique_id = f"tis_{subnet}_{device_id}"
             
@@ -1194,6 +1205,7 @@ class TISWebUI:
                 'channels': channels,
                 'name': device_name or f"{model_name} ({subnet}.{device_id})",
                 'channel_names': channel_names,  # Add channel names to JSON
+                'initial_states': initial_states,  # Add initial states
                 'entity_type': entity_type  # NEW: Entity type for HA
             }
             
@@ -1349,79 +1361,63 @@ class TISWebUI:
             return False
     
     async def _query_channel_names(self, subnet: int, device_id: int, channels: int) -> dict:
-        """Query channel names from device via UDP."""
-        channel_names = {}
-        
+        """Query channel names from device via UDP with retry logic."""
         try:
-            from tis_protocol import TISUDPClient, TISPacket
-            from discovery import get_local_ip
+            from discovery import query_all_channel_names
             
-            client = TISUDPClient(self.gateway_ip, self.udp_port)
-            await client.async_connect(bind=True)  # Bind to receive responses
+            _LOGGER.info(f"🔍 Querying channel names for {subnet}.{device_id} ({channels} channels)")
             
-            local_ip = get_local_ip()
-            ip_bytes = bytes([int(x) for x in local_ip.split('.')])
+            # Use the reliable discovery function with retries and delays
+            channel_names = await query_all_channel_names(
+                self.gateway_ip, 
+                subnet, 
+                device_id, 
+                channels, 
+                self.udp_port
+            )
             
-            # Query each channel name (OpCode 0xF00E)
-            for ch in range(1, min(channels + 1, 25)):  # Max 24 channels
-                packet = TISPacket()
-                packet.src_subnet = 1
-                packet.src_device = 254
-                packet.src_type = 0xFFFE
-                packet.tgt_subnet = subnet
-                packet.tgt_device = device_id
-                packet.op_code = 0xF00E  # Channel name query
-                packet.additional_data = bytes([ch])
-                
-                tis_data = packet.build()
-                full_packet = ip_bytes + b'SMARTCLOUD' + tis_data
-                client.send_to(full_packet, self.gateway_ip)
-                
-                _LOGGER.debug(f"Sent channel name query for CH{ch}")
-                
-                # Small delay between requests
-                await asyncio.sleep(0.1)
+            _LOGGER.info(f"✅ Query complete: {len(channel_names)}/{channels} names retrieved")
             
-            # Wait for responses (OpCode 0xF00F)
-            # Socket timeout 1.0s, so we need to try multiple times
-            timeout = 3.0  # Total wait time
-            start_time = asyncio.get_event_loop().time()
+            # Convert integer keys to strings for JSON compatibility
+            result = {str(k): v for k, v in channel_names.items()}
             
-            # Read responses
-            while asyncio.get_event_loop().time() - start_time < timeout:
-                try:
-                    # Non-blocking receive
-                    client.sock.settimeout(0.1)  # Short timeout for non-blocking
-                    data, addr = client.sock.recvfrom(1024)
-                    if len(data) > 14:  # Skip IP + SMARTCLOUD
-                        parsed = TISPacket.parse(data[14:])
-                        if parsed and parsed['op_code'] == 0xF00F:
-                            if len(parsed['additional_data']) >= 1:
-                                ch = parsed['additional_data'][0]
-                                name_bytes = bytes(parsed['additional_data'][1:])
-                                name_bytes = name_bytes.rstrip(b'\x00').rstrip(b'\xff')
-                                
-                                if len(name_bytes) > 0 and not all(b == 0xFF for b in name_bytes):
-                                    try:
-                                        name = name_bytes.decode('utf-8').strip()
-                                        channel_names[ch] = name
-                                        _LOGGER.info(f"CH{ch}: {name}")
-                                    except UnicodeDecodeError:
-                                        pass
-                except socket.timeout:
-                    # No data available, wait a bit and retry
-                    await asyncio.sleep(0.1)
-                except BlockingIOError:
-                    await asyncio.sleep(0.1)
-                except Exception as e:
-                    _LOGGER.warning(f"Error reading channel name response: {e}")
-                    await asyncio.sleep(0.1)
-            
-            client.close()
-            return channel_names
+            return result
             
         except Exception as e:
-            _LOGGER.error(f"Failed to query channel names: {e}", exc_info=True)
+            _LOGGER.error(f"❌ Failed to query channel names: {e}", exc_info=True)
+            return {}
+    
+    async def _query_initial_states(self, subnet: int, device_id: int, channels: int) -> dict:
+        """Query initial channel states from device."""
+        try:
+            from discovery import query_device_initial_states
+            
+            _LOGGER.info(f"🔍 Querying initial states for {subnet}.{device_id}")
+            
+            # Query all channel states
+            states = await query_device_initial_states(
+                self.gateway_ip,
+                subnet,
+                device_id,
+                channels,
+                self.udp_port
+            )
+            
+            _LOGGER.info(f"✅ States query complete: {len(states)}/{channels} channels")
+            
+            # Convert to JSON-serializable format
+            result = {}
+            for ch, state in states.items():
+                result[str(ch)] = {
+                    'is_on': state['is_on'],
+                    'brightness': state['brightness'],
+                    'raw_value': state['raw_value']
+                }
+            
+            return result
+            
+        except Exception as e:
+            _LOGGER.error(f"❌ Failed to query initial states: {e}", exc_info=True)
             return {}
 
 
