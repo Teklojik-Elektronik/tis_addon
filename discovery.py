@@ -402,6 +402,79 @@ async def query_all_channel_names(gateway_ip: str, subnet: int, device_id: int, 
                     break
                 continue
         
+        # PHASE 3: Retry missing channels
+        missing_channels = []
+        for ch in range(1, channels + 1):
+            if ch not in received_channels:
+                missing_channels.append(ch)
+        
+        if missing_channels and len(missing_channels) <= 5:
+            _LOGGER.warning(f"⚠️ Missing {len(missing_channels)} channels: {missing_channels}, retrying...")
+            
+            for channel in missing_channels:
+                packet = TISPacket()
+                packet.src_subnet = 1
+                packet.src_device = 254
+                packet.src_type = 0xFFFE
+                packet.tgt_subnet = subnet
+                packet.tgt_device = device_id
+                packet.op_code = 0xF00E
+                packet.additional_data = bytes([channel])
+                
+                tis_data = packet.build()
+                full_packet = ip_bytes + b'SMARTCLOUD' + tis_data
+                
+                client.send_to(full_packet, gateway_ip)
+                _LOGGER.debug(f"🔄 Retry CH{channel}")
+                await asyncio.sleep(0.3)
+            
+            # Collect retry responses
+            retry_timeout = 5.0
+            retry_start = time.time()
+            
+            while time.time() - retry_start < retry_timeout:
+                try:
+                    data = await asyncio.wait_for(
+                        asyncio.get_event_loop().sock_recvfrom(client.sock, 1024),
+                        timeout=0.5
+                    )
+                    data = data[0]
+                    
+                    if b'SMARTCLOUD' in data:
+                        idx = data.find(b'SMARTCLOUD')
+                        tis_data = data[idx + 10:]
+                    else:
+                        tis_data = data
+                    
+                    parsed = TISPacket.parse(tis_data)
+                    
+                    if parsed and parsed['op_code'] == 0xF00F:
+                        if len(parsed['additional_data']) >= 1:
+                            resp_channel = parsed['additional_data'][0]
+                            
+                            if resp_channel in missing_channels and resp_channel not in received_channels:
+                                if len(parsed['additional_data']) >= 2:
+                                    name_bytes = parsed['additional_data'][1:]
+                                    
+                                    if len(name_bytes) > 0 and name_bytes[0] != 0xFF:
+                                        try:
+                                            null_idx = name_bytes.find(b'\x00')
+                                            if null_idx > 0:
+                                                name_bytes = name_bytes[:null_idx]
+                                            
+                                            channel_name = name_bytes.decode('utf-8').strip()
+                                            if channel_name:
+                                                channel_names[str(resp_channel)] = channel_name
+                                                received_channels.add(resp_channel)
+                                                _LOGGER.info(f"✅ CH{resp_channel} (retry): '{channel_name}'")
+                                        except:
+                                            pass
+                                    else:
+                                        received_channels.add(resp_channel)
+                
+                except asyncio.TimeoutError:
+                    continue
+        
         _LOGGER.info(f"🎯 Query complete: {len(channel_names)}/{channels} names, {len(received_channels)} responses")
         
     except Exception as e:
