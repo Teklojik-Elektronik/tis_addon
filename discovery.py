@@ -320,8 +320,8 @@ async def query_all_channel_names(gateway_ip: str, subnet: int, device_id: int, 
             client.send_to(full_packet, gateway_ip)
             _LOGGER.debug(f"📤 Query CH{channel}")
             
-            # Small delay between queries to avoid flooding
-            await asyncio.sleep(0.15)
+            # Small delay between queries to avoid flooding (200ms to reduce packet loss)
+            await asyncio.sleep(0.2)
         
         # PHASE 2: Collect responses (up to 15 seconds total)
         _LOGGER.info(f"📥 Collecting responses...")
