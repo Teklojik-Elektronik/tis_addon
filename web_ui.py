@@ -1430,7 +1430,19 @@ async def main():
     parser = argparse.ArgumentParser(description='TIS Web UI Server')
     parser.add_argument('--gateway', default='192.168.1.200', help='TIS Gateway IP')
     parser.add_argument('--port', type=int, default=6000, help='UDP Port')
+    parser.add_argument('--log-level', default='info', choices=['debug', 'info', 'warning', 'error'], help='Log level')
     args = parser.parse_args()
+    
+    # Set log level from argument
+    log_level_map = {
+        'debug': logging.DEBUG,
+        'info': logging.INFO,
+        'warning': logging.WARNING,
+        'error': logging.ERROR
+    }
+    logging.getLogger().setLevel(log_level_map[args.log_level])
+    _LOGGER.setLevel(log_level_map[args.log_level])
+    _LOGGER.info(f"Log level set to: {args.log_level.upper()}")
 
     web_ui = TISWebUI(args.gateway, args.port)
     await web_ui.start()
