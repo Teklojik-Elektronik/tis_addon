@@ -487,8 +487,15 @@ async def query_device_initial_states(gateway_ip: str, subnet: int, device_id: i
                         # Response format: additional_data[0] = channel_count, additional_data[1..24] = channel states
                         state_bytes = parsed.get('additional_data', bytes())
                         
+                        # DEBUG: Log raw response
+                        _LOGGER.debug(f"OpCode 0x0034 response: {state_bytes.hex()}")
+                        _LOGGER.debug(f"Response length: {len(state_bytes)} bytes (expected {channels + 1})")
+                        
                         # First byte is channel count, skip it
                         if len(state_bytes) >= channels + 1:
+                            channel_count = state_bytes[0]
+                            _LOGGER.debug(f"Channel count byte: 0x{channel_count:02X} ({channel_count})")
+                            
                             states = {}
                             for ch in range(channels):
                                 raw_value = state_bytes[ch + 1]  # Skip first byte (channel count)
@@ -502,6 +509,10 @@ async def query_device_initial_states(gateway_ip: str, subnet: int, device_id: i
                                     'brightness': brightness,
                                     'raw_value': raw_value
                                 }
+                                
+                                # DEBUG: Log non-zero channels
+                                if raw_value > 0:
+                                    _LOGGER.debug(f"  CH{ch + 1}: ON (raw={raw_value}, brightness={brightness}%)")
                             
                             _LOGGER.info(f"✅ Got {len(states)} channel states")
                             return states
