@@ -229,42 +229,94 @@ class TISWebUI:
                     color: #4CAF50;
                 }
                 
-                /* Action Buttons in Table */
+                /* Action Buttons in Table - Laravel Backpack Style */
                 .table-actions {
                     display: flex;
-                    gap: 4px;
+                    gap: 2px;
+                    justify-content: flex-end;
                 }
-                .table-actions button {
-                    padding: 4px 10px;
-                    font-size: 12px;
-                    border: 1px solid #ccc;
+                .table-actions .btn {
+                    padding: 4px 8px;
+                    font-size: 11px;
+                    border: 1px solid transparent;
                     border-radius: 3px;
-                    background: white;
                     cursor: pointer;
-                    transition: all 0.2s;
+                    transition: all 0.15s ease-in-out;
+                    font-weight: 500;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 4px;
+                    line-height: 1.5;
+                    min-width: 32px;
+                    text-align: center;
+                    justify-content: center;
                 }
-                .table-actions button:hover {
-                    background: #f0f0f0;
+                .table-actions .btn:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
                 }
-                .table-actions button.btn-on {
-                    background: #4CAF50;
+                .table-actions .btn:active {
+                    transform: translateY(0);
+                }
+                .table-actions .btn-success {
+                    background-color: #5cb85c;
+                    border-color: #4cae4c;
                     color: white;
-                    border-color: #45a049;
                 }
-                .table-actions button.btn-off {
-                    background: #f44336;
-                    color: white;
-                    border-color: #d32f2f;
+                .table-actions .btn-success:hover {
+                    background-color: #449d44;
+                    border-color: #398439;
                 }
-                .table-actions button.btn-add {
-                    background: #2196F3;
+                .table-actions .btn-danger {
+                    background-color: #d9534f;
+                    border-color: #d43f3a;
                     color: white;
-                    border-color: #1976D2;
                 }
-                .table-actions button.btn-remove {
-                    background: #f44336;
+                .table-actions .btn-danger:hover {
+                    background-color: #c9302c;
+                    border-color: #ac2925;
+                }
+                .table-actions .btn-primary {
+                    background-color: #337ab7;
+                    border-color: #2e6da4;
                     color: white;
-                    border-color: #d32f2f;
+                }
+                .table-actions .btn-primary:hover {
+                    background-color: #286090;
+                    border-color: #204d74;
+                }
+                .table-actions .btn-warning {
+                    background-color: #f0ad4e;
+                    border-color: #eea236;
+                    color: white;
+                }
+                .table-actions .btn-warning:hover {
+                    background-color: #ec971f;
+                    border-color: #d58512;
+                }
+                .table-actions .btn-icon {
+                    padding: 4px 6px;
+                    min-width: 28px;
+                }
+                /* Dropdown Style Actions */
+                .table-actions .dropdown {
+                    position: relative;
+                    display: inline-block;
+                }
+                .table-actions .btn-group {
+                    display: inline-flex;
+                    gap: 0;
+                }
+                .table-actions .btn-group .btn {
+                    border-radius: 0;
+                }
+                .table-actions .btn-group .btn:first-child {
+                    border-top-left-radius: 3px;
+                    border-bottom-left-radius: 3px;
+                }
+                .table-actions .btn-group .btn:last-child {
+                    border-top-right-radius: 3px;
+                    border-bottom-right-radius: 3px;
                 }
                 
                 /* Status Bar */
@@ -505,21 +557,38 @@ class TISWebUI:
                     const statusIcon = dev.is_added ? '<span class="status-icon added">✓</span>' : '';
                     
                     // Eklenmiş cihazlar için Sil butonu, eklenmemişler için Ekle butonu
+                    // Laravel Backpack button stilini kullan
                     let actionButtons = '';
                     if (dev.is_added) {
                         actionButtons = `
                             <div class="table-actions">
-                                <button class="btn-on" onclick="controlDevice(${dev.subnet}, ${dev.device}, 1, 0)">ON</button>
-                                <button class="btn-off" onclick="controlDevice(${dev.subnet}, ${dev.device}, 0, 0)">OFF</button>
-                                <button class="btn-remove" onclick="removeDevice(${dev.subnet}, ${dev.device}, '${dev.name}')">Remove</button>
+                                <div class="btn-group">
+                                    <button class="btn btn-success btn-icon" onclick="controlDevice(${dev.subnet}, ${dev.device}, 1, 0)" title="Turn ON">
+                                        <span>⚡</span>
+                                    </button>
+                                    <button class="btn btn-danger btn-icon" onclick="controlDevice(${dev.subnet}, ${dev.device}, 0, 0)" title="Turn OFF">
+                                        <span>🔌</span>
+                                    </button>
+                                </div>
+                                <button class="btn btn-warning" onclick="removeDevice(${dev.subnet}, ${dev.device}, '${dev.name}')" title="Remove from Home Assistant">
+                                    <span>🗑️</span> Remove
+                                </button>
                             </div>
                         `;
                     } else {
                         actionButtons = `
                             <div class="table-actions">
-                                <button class="btn-on" onclick="controlDevice(${dev.subnet}, ${dev.device}, 1, 0)">ON</button>
-                                <button class="btn-off" onclick="controlDevice(${dev.subnet}, ${dev.device}, 0, 0)">OFF</button>
-                                <button class="btn-add" onclick="addDevice(${dev.subnet}, ${dev.device}, '${dev.model_name}', ${dev.channels}, '${dev.name}')">Add</button>
+                                <div class="btn-group">
+                                    <button class="btn btn-success btn-icon" onclick="controlDevice(${dev.subnet}, ${dev.device}, 1, 0)" title="Turn ON">
+                                        <span>⚡</span>
+                                    </button>
+                                    <button class="btn btn-danger btn-icon" onclick="controlDevice(${dev.subnet}, ${dev.device}, 0, 0)" title="Turn OFF">
+                                        <span>🔌</span>
+                                    </button>
+                                </div>
+                                <button class="btn btn-primary" onclick="addDevice(${dev.subnet}, ${dev.device}, '${dev.model_name}', ${dev.channels}, '${dev.name}')" title="Add to Home Assistant">
+                                    <span>➕</span> Add
+                                </button>
                             </div>
                         `;
                     }
@@ -614,9 +683,17 @@ class TISWebUI:
                                 const safeName = deviceName.replace(/'/g, "\\\\'");
                                 actionsCell.innerHTML = `
                                     <div class="table-actions">
-                                        <button class="btn-on" onclick="controlDevice(${subnet}, ${deviceId}, 1, 0)">ON</button>
-                                        <button class="btn-off" onclick="controlDevice(${subnet}, ${deviceId}, 0, 0)">OFF</button>
-                                        <button class="btn-remove" onclick="removeDevice(${subnet}, ${deviceId}, '${safeName}')">Remove</button>
+                                        <div class="btn-group">
+                                            <button class="btn btn-success btn-icon" onclick="controlDevice(${subnet}, ${deviceId}, 1, 0)" title="Turn ON">
+                                                <span>⚡</span>
+                                            </button>
+                                            <button class="btn btn-danger btn-icon" onclick="controlDevice(${subnet}, ${deviceId}, 0, 0)" title="Turn OFF">
+                                                <span>🔌</span>
+                                            </button>
+                                        </div>
+                                        <button class="btn btn-warning" onclick="removeDevice(${subnet}, ${deviceId}, '${safeName}')" title="Remove from Home Assistant">
+                                            <span>🗑️</span> Remove
+                                        </button>
                                     </div>
                                 `;
                             }
@@ -664,9 +741,17 @@ class TISWebUI:
                                 const channels = row.cells[5].textContent;
                                 actionsCell.innerHTML = `
                                     <div class="table-actions">
-                                        <button class="btn-on" onclick="controlDevice(${subnet}, ${deviceId}, 1, 0)">ON</button>
-                                        <button class="btn-off" onclick="controlDevice(${subnet}, ${deviceId}, 0, 0)">OFF</button>
-                                        <button class="btn-add" onclick="addDevice(${subnet}, ${deviceId}, '${modelName}', ${channels}, '${safeName}')">Add</button>
+                                        <div class="btn-group">
+                                            <button class="btn btn-success btn-icon" onclick="controlDevice(${subnet}, ${deviceId}, 1, 0)" title="Turn ON">
+                                                <span>⚡</span>
+                                            </button>
+                                            <button class="btn btn-danger btn-icon" onclick="controlDevice(${subnet}, ${deviceId}, 0, 0)" title="Turn OFF">
+                                                <span>🔌</span>
+                                            </button>
+                                        </div>
+                                        <button class="btn btn-primary" onclick="addDevice(${subnet}, ${deviceId}, '${modelName}', ${channels}, '${safeName}')" title="Add to Home Assistant">
+                                            <span>➕</span> Add
+                                        </button>
                                     </div>
                                 `;
                             }
