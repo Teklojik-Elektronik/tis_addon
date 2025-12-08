@@ -1019,36 +1019,71 @@ class TISWebUI:
         
         # Send start event
         await response.write(b'event: start\n')
-        await response.write(b'data: {"message": "Scanning network..."}\n\n')
+        await response.write(b'data: {"message": "Scanning network via TIS integration..."}\n\n')
         
-        # Discover devices with callback for each device found
-        from discovery import TISDiscovery
-        discovery = TISDiscovery(gateway_ip, self.udp_port)
-        
-        async def on_device_found(device):
-            # Mark if already added
-            subnet = device.get('subnet')
-            device_id = device.get('device')
-            unique_id = f"tis_{subnet}_{device_id}"
-            device['is_added'] = unique_id in added_devices
-            
-            # Send device event immediately
-            device_json = json.dumps(device)
-            await response.write(b'event: device\n')
-            data_line = f'data: {device_json}\n\n'
-            await response.write(data_line.encode())
-        
-        # Run discovery with callback
         try:
-            devices = await discovery.discover_with_callback(on_device_found)
+            # Call Home Assistant's TIS integration scan endpoint
+            import aiohttp
+            async with aiohttp.ClientSession() as session:
+                # Use local Home Assistant API
+                scan_url = 'http://homeassistant.local:8123/api/scan_devices'
+                _LOGGER.info(f"Calling TIS integration scan endpoint: {scan_url}")
+                
+                async with session.get(scan_url, timeout=aiohttp.ClientTimeout(total=35)) as resp:
+                    if resp.status == 200:
+                        devices_data = await resp.json()
+                        _LOGGER.info(f"Received {len(devices_data)} devices from integration")
+                        
+                        # Convert integration format to our format and stream
+                        for device in devices_data:
+                            try:
+                                # Extract device info from integration response
+                                device_id_parts = device.get('device_id', [])
+                                if len(device_id_parts) >= 2:
+                                    subnet = device_id_parts[0]
+                                    device_id = device_id_parts[1]
+                                    unique_id = f"tis_{subnet}_{device_id}"
+                                    
+                                    # Get device type info
+                                    from const import get_device_info
+                                    device_type_code = device.get('device_type_code', [0xFFFE, 0xFFFE])
+                                    device_type_int = (device_type_code[0] << 8) | device_type_code[1]
+                                    model_name, channels = get_device_info(device_type_int)
+                                    
+                                    if model_name != "Unknown Device":
+                                        device_info = {
+                                            "host": '.'.join(map(str, device.get('gateway', []))),
+                                            "subnet": subnet,
+                                            "device": device_id,
+                                            "device_type": device_type_int,
+                                            "device_type_hex": f"0x{device_type_int:04X}",
+                                            "model_name": model_name,
+                                            "channels": channels,
+                                            "name": f"{model_name} ({subnet}.{device_id})",
+                                            "is_added": unique_id in added_devices
+                                        }
+                                        
+                                        # Send device event
+                                        device_json = json.dumps(device_info)
+                                        await response.write(b'event: device\n')
+                                        data_line = f'data: {device_json}\n\n'
+                                        await response.write(data_line.encode())
+                            except Exception as e:
+                                _LOGGER.error(f"Error processing device: {e}")
+                        
+                        # Send completion event
+                        await response.write(b'event: complete\n')
+                        complete_data = f'data: {{\"count\": {len(devices_data)}}}\n\n'
+                        await response.write(complete_data.encode())
+                    else:
+                        _LOGGER.error(f"Integration scan failed: HTTP {resp.status}")
+                        await response.write(b'event: error\n')
+                        await response.write(b'data: {"message": "Integration scan failed"}\n\n')
         except Exception as e:
-            _LOGGER.error(f"Discovery failed: {e}", exc_info=True)
-            devices = {}
-        
-        # Send completion event
-        await response.write(b'event: complete\n')
-        complete_data = f'data: {{"count": {len(devices)}}}\n\n'
-        await response.write(complete_data.encode())
+            _LOGGER.error(f"Failed to call integration scan: {e}", exc_info=True)
+            await response.write(b'event: error\n')
+            error_msg = f'data: {{\"message\": \"Error: {str(e)}\"}}\n\n'
+            await response.write(error_msg.encode())
         
         return response
 
