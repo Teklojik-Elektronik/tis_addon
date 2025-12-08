@@ -445,11 +445,6 @@ class TISWebUI:
                     <button onclick="toggleDebug()">🐛 Debug Tool</button>
                 </div>
                 
-                <!-- Gateway Warning -->
-                <div id="gatewayWarning" style="display: none; background: #fff3cd; border-bottom: 2px solid #ffc107; padding: 12px 15px;">
-                    <strong>⚠️ Configuration Missing:</strong> Gateway IP not configured.
-                </div>
-                
                 <!-- Table Container -->
                 <div class="table-container">
                     <table class="devices-table">
@@ -489,24 +484,10 @@ class TISWebUI:
             <script>
                 let debugMode = false;
                 let debugSocket = null;
-                let currentGatewayIP = '';
                 
-                // Sayfa yüklendiğinde gateway IP kontrolü
+                // Sayfa yüklendiğinde hazır
                 window.addEventListener('DOMContentLoaded', async function() {
-                    console.log('Page loaded, fetching gateway info...');
-                    try {
-                        const response = await fetch('/api/info');
-                        const data = await response.json();
-                        currentGatewayIP = data.gateway_ip || '';
-                        console.log('Gateway IP:', currentGatewayIP);
-                        
-                        // Gateway IP yoksa veya 0.0.0.0 ise uyarı göster
-                        if (!currentGatewayIP || currentGatewayIP === '0.0.0.0') {
-                            document.getElementById('gatewayWarning').style.display = 'block';
-                        }
-                    } catch (e) {
-                        console.error('Gateway IP alınamadı:', e);
-                    }
+                    console.log('Page loaded, ready for device scanning via TIS integration');
                 });
                 
                 function toggleDebug() {
@@ -523,29 +504,16 @@ class TISWebUI:
                     const btn = document.getElementById('scanBtn');
                     const statusText = document.getElementById('statusText');
                     const tableBody = document.getElementById('devicesTableBody');
-                    const gatewayWarning = document.getElementById('gatewayWarning');
                     const progressContainer = document.getElementById('progressContainer');
                     const progressBar = document.getElementById('progressBar');
-                    
-                    console.log('Current Gateway IP:', currentGatewayIP);
-                    
-                    // Gateway IP kontrolü
-                    if (!currentGatewayIP || currentGatewayIP === '0.0.0.0') {
-                        console.warn('Gateway IP not configured');
-                        statusText.innerText = '⚠️ Gateway IP not configured!';
-                        gatewayWarning.style.display = 'block';
-                        return;
-                    }
-                    
-                    gatewayWarning.style.display = 'none';
                     
                     // Butonları devre dışı bırak
                     btn.disabled = true;
                     document.querySelectorAll('.toolbar button').forEach(b => b.disabled = true);
                     
                     btn.innerText = "⏳ Scanning...";
-                    statusText.innerText = "Scanning network, please wait...";
-                    tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;"><div style="font-size: 32px;">⏳</div><div>Scanning network...</div></td></tr>';
+                    statusText.innerText = "Scanning network via TIS integration...";
+                    tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;"><div style="font-size: 32px;">⏳</div><div>Scanning network via TIS integration...</div></td></tr>';
                     
                     // Progress bar başlat
                     progressContainer.classList.add('active');
@@ -571,7 +539,7 @@ class TISWebUI:
                     let deviceCount = 0;
                     
                     try {
-                        const eventSource = new EventSource('/api/devices/stream?gateway=' + encodeURIComponent(currentGatewayIP));
+                        const eventSource = new EventSource('/api/devices/stream');
                         
                         eventSource.addEventListener('start', (e) => {
                             console.log('Stream started');
