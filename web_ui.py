@@ -328,6 +328,48 @@ class TISWebUI:
                     color: #666;
                     display: flex;
                     justify-content: space-between;
+                    align-items: center;
+                    gap: 15px;
+                }
+                
+                /* Progress Bar */
+                .progress-container {
+                    flex: 1;
+                    max-width: 300px;
+                    height: 20px;
+                    background: #e0e0e0;
+                    border-radius: 10px;
+                    overflow: hidden;
+                    position: relative;
+                    display: none;
+                }
+                .progress-container.active {
+                    display: block;
+                }
+                .progress-bar {
+                    height: 100%;
+                    background: linear-gradient(90deg, #4CAF50, #45a049);
+                    transition: width 0.3s ease;
+                    position: relative;
+                }
+                .progress-bar::after {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    bottom: 0;
+                    right: 0;
+                    background: linear-gradient(
+                        90deg,
+                        rgba(255, 255, 255, 0) 0%,
+                        rgba(255, 255, 255, 0.3) 50%,
+                        rgba(255, 255, 255, 0) 100%
+                    );
+                    animation: shimmer 1.5s infinite;
+                }
+                @keyframes shimmer {
+                    0% { transform: translateX(-100%); }
+                    100% { transform: translateX(100%); }
                 }
                 .debug-panel {
                     background: #1e1e1e;
@@ -437,6 +479,9 @@ class TISWebUI:
                 <!-- Status Bar -->
                 <div class="statusbar">
                     <div id="statusText">Ready - Click "Scan Network" to discover devices</div>
+                    <div class="progress-container" id="progressContainer">
+                        <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+                    </div>
                     <div id="deviceCount">Total Devices: 0</div>
                 </div>
             </div>
@@ -479,6 +524,8 @@ class TISWebUI:
                     const statusText = document.getElementById('statusText');
                     const tableBody = document.getElementById('devicesTableBody');
                     const gatewayWarning = document.getElementById('gatewayWarning');
+                    const progressContainer = document.getElementById('progressContainer');
+                    const progressBar = document.getElementById('progressBar');
                     
                     console.log('Current Gateway IP:', currentGatewayIP);
                     
@@ -492,10 +539,32 @@ class TISWebUI:
                     
                     gatewayWarning.style.display = 'none';
                     
+                    // Butonları devre dışı bırak
                     btn.disabled = true;
+                    document.querySelectorAll('.toolbar button').forEach(b => b.disabled = true);
+                    
                     btn.innerText = "⏳ Scanning...";
                     statusText.innerText = "Scanning network, please wait...";
                     tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;"><div style="font-size: 32px;">⏳</div><div>Scanning network...</div></td></tr>';
+                    
+                    // Progress bar başlat
+                    progressContainer.classList.add('active');
+                    progressBar.style.width = '0%';
+                    
+                    // Progress animasyonu (30 saniye boyunca dolacak)
+                    const scanDuration = 30000; // 30 saniye
+                    const progressInterval = 100; // Her 100ms'de güncelle
+                    const progressStep = (progressInterval / scanDuration) * 100;
+                    let currentProgress = 0;
+                    
+                    const progressTimer = setInterval(() => {
+                        currentProgress += progressStep;
+                        if (currentProgress >= 100) {
+                            currentProgress = 100;
+                            clearInterval(progressTimer);
+                        }
+                        progressBar.style.width = currentProgress + '%';
+                    }, progressInterval);
                     
                     console.log('Starting SSE stream...');
                     
@@ -524,6 +593,14 @@ class TISWebUI:
                         
                         eventSource.addEventListener('complete', (e) => {
                             console.log('Scan completed');
+                            clearInterval(progressTimer);
+                            progressBar.style.width = '100%';
+                            
+                            setTimeout(() => {
+                                progressContainer.classList.remove('active');
+                                progressBar.style.width = '0%';
+                            }, 500);
+                            
                             statusText.innerText = `✅ Scan completed: ${deviceCount} device(s) found`;
                             
                             if (deviceCount === 0) {
@@ -531,23 +608,40 @@ class TISWebUI:
                             }
                             
                             eventSource.close();
+                            
+                            // Butonları tekrar aktif et
                             btn.disabled = false;
+                            document.querySelectorAll('.toolbar button').forEach(b => b.disabled = false);
                             btn.innerText = "🔍 Scan Network";
                         });
                         
                         eventSource.onerror = (e) => {
                             console.error('SSE error:', e);
+                            clearInterval(progressTimer);
+                            progressContainer.classList.remove('active');
+                            progressBar.style.width = '0%';
+                            
                             statusText.innerText = "❌ Error during scan";
                             eventSource.close();
+                            
+                            // Butonları tekrar aktif et
                             btn.disabled = false;
+                            document.querySelectorAll('.toolbar button').forEach(b => b.disabled = false);
                             btn.innerText = "🔍 Scan Network";
                         };
                         
                     } catch (e) {
                         console.error('Scan error:', e);
+                        clearInterval(progressTimer);
+                        progressContainer.classList.remove('active');
+                        progressBar.style.width = '0%';
+                        
                         statusText.innerText = "❌ Error: " + e.message;
                         tableBody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 60px; color: #f44336;"><div style="font-size: 48px; margin-bottom: 15px;">⚠️</div><div>Error: ${e.message}</div></td></tr>`;
+                        
+                        // Butonları tekrar aktif et
                         btn.disabled = false;
+                        document.querySelectorAll('.toolbar button').forEach(b => b.disabled = false);
                         btn.innerText = "🔍 Scan Network";
                     }
                 }
@@ -556,21 +650,19 @@ class TISWebUI:
                     const addedClass = dev.is_added ? 'added' : '';
                     const statusIcon = dev.is_added ? '<span class="status-icon added">✓</span>' : '';
                     
-                    // Eklenmiş cihazlar için Sil butonu, eklenmemişler için Ekle butonu
+                    // Eklenmiş cihazlar için Edit+Remove butonları, eklenmemişler için Preview+Add butonları
                     // Laravel Backpack button stilini kullan
                     let actionButtons = '';
                     if (dev.is_added) {
                         actionButtons = `
                             <div class="table-actions">
-                                <div class="btn-group">
-                                    <button class="btn btn-success btn-icon" onclick="controlDevice(${dev.subnet}, ${dev.device}, 1, 0)" title="Turn ON">
-                                        <span>⚡</span>
-                                    </button>
-                                    <button class="btn btn-danger btn-icon" onclick="controlDevice(${dev.subnet}, ${dev.device}, 0, 0)" title="Turn OFF">
-                                        <span>🔌</span>
-                                    </button>
-                                </div>
-                                <button class="btn btn-warning" onclick="removeDevice(${dev.subnet}, ${dev.device}, '${dev.name}')" title="Remove from Home Assistant">
+                                <button class="btn btn-primary" onclick="previewDevice(${dev.subnet}, ${dev.device}, '${dev.name}')" title="Preview device details">
+                                    <span>👁️</span> Preview
+                                </button>
+                                <button class="btn btn-warning" onclick="editDevice(${dev.subnet}, ${dev.device}, '${dev.name}')" title="Edit device settings">
+                                    <span>✏️</span> Edit
+                                </button>
+                                <button class="btn btn-danger" onclick="removeDevice(${dev.subnet}, ${dev.device}, '${dev.name}')" title="Remove from Home Assistant">
                                     <span>🗑️</span> Remove
                                 </button>
                             </div>
@@ -578,15 +670,10 @@ class TISWebUI:
                     } else {
                         actionButtons = `
                             <div class="table-actions">
-                                <div class="btn-group">
-                                    <button class="btn btn-success btn-icon" onclick="controlDevice(${dev.subnet}, ${dev.device}, 1, 0)" title="Turn ON">
-                                        <span>⚡</span>
-                                    </button>
-                                    <button class="btn btn-danger btn-icon" onclick="controlDevice(${dev.subnet}, ${dev.device}, 0, 0)" title="Turn OFF">
-                                        <span>🔌</span>
-                                    </button>
-                                </div>
-                                <button class="btn btn-primary" onclick="addDevice(${dev.subnet}, ${dev.device}, '${dev.model_name}', ${dev.channels}, '${dev.name}')" title="Add to Home Assistant">
+                                <button class="btn btn-primary" onclick="previewDevice(${dev.subnet}, ${dev.device}, '${dev.name}')" title="Preview device details">
+                                    <span>👁️</span> Preview
+                                </button>
+                                <button class="btn btn-success" onclick="addDevice(${dev.subnet}, ${dev.device}, '${dev.model_name}', ${dev.channels}, '${dev.name}')" title="Add to Home Assistant">
                                     <span>➕</span> Add
                                 </button>
                             </div>
@@ -683,15 +770,13 @@ class TISWebUI:
                                 const safeName = deviceName.replace(/'/g, "\\\\'");
                                 actionsCell.innerHTML = `
                                     <div class="table-actions">
-                                        <div class="btn-group">
-                                            <button class="btn btn-success btn-icon" onclick="controlDevice(${subnet}, ${deviceId}, 1, 0)" title="Turn ON">
-                                                <span>⚡</span>
-                                            </button>
-                                            <button class="btn btn-danger btn-icon" onclick="controlDevice(${subnet}, ${deviceId}, 0, 0)" title="Turn OFF">
-                                                <span>🔌</span>
-                                            </button>
-                                        </div>
-                                        <button class="btn btn-warning" onclick="removeDevice(${subnet}, ${deviceId}, '${safeName}')" title="Remove from Home Assistant">
+                                        <button class="btn btn-primary" onclick="previewDevice(${subnet}, ${deviceId}, '${safeName}')" title="Preview device details">
+                                            <span>👁️</span> Preview
+                                        </button>
+                                        <button class="btn btn-warning" onclick="editDevice(${subnet}, ${deviceId}, '${safeName}')" title="Edit device settings">
+                                            <span>✏️</span> Edit
+                                        </button>
+                                        <button class="btn btn-danger" onclick="removeDevice(${subnet}, ${deviceId}, '${safeName}')" title="Remove from Home Assistant">
                                             <span>🗑️</span> Remove
                                         </button>
                                     </div>
@@ -741,15 +826,10 @@ class TISWebUI:
                                 const channels = row.cells[5].textContent;
                                 actionsCell.innerHTML = `
                                     <div class="table-actions">
-                                        <div class="btn-group">
-                                            <button class="btn btn-success btn-icon" onclick="controlDevice(${subnet}, ${deviceId}, 1, 0)" title="Turn ON">
-                                                <span>⚡</span>
-                                            </button>
-                                            <button class="btn btn-danger btn-icon" onclick="controlDevice(${subnet}, ${deviceId}, 0, 0)" title="Turn OFF">
-                                                <span>🔌</span>
-                                            </button>
-                                        </div>
-                                        <button class="btn btn-primary" onclick="addDevice(${subnet}, ${deviceId}, '${modelName}', ${channels}, '${safeName}')" title="Add to Home Assistant">
+                                        <button class="btn btn-primary" onclick="previewDevice(${subnet}, ${deviceId}, '${safeName}')" title="Preview device details">
+                                            <span>👁️</span> Preview
+                                        </button>
+                                        <button class="btn btn-success" onclick="addDevice(${subnet}, ${deviceId}, '${modelName}', ${channels}, '${safeName}')" title="Add to Home Assistant">
                                             <span>➕</span> Add
                                         </button>
                                     </div>
@@ -760,6 +840,55 @@ class TISWebUI:
                         }
                     } catch (err) {
                         alert('❌ Error: ' + err.message);
+                    }
+                }
+                
+                function previewDevice(subnet, deviceId, deviceName) {
+                    // Preview: Cihaz bilgilerini göster ve test komutları gönder
+                    const row = document.querySelector(`tr[data-subnet="${subnet}"][data-device="${deviceId}"]`);
+                    if (!row) {
+                        alert('Device not found in table');
+                        return;
+                    }
+                    
+                    const modelName = row.cells[3].textContent;
+                    const ipAddress = row.cells[4].textContent;
+                    const channels = row.cells[5].textContent;
+                    const description = row.cells[6].textContent;
+                    
+                    const message = `📱 Device Preview\\n\\n` +
+                        `Name: ${deviceName}\\n` +
+                        `Address: ${subnet}.${deviceId}\\n` +
+                        `Model: ${modelName}\\n` +
+                        `IP: ${ipAddress}\\n` +
+                        `Channels: ${channels}\\n` +
+                        `Description: ${description}\\n\\n` +
+                        `Use Edit button to modify settings.`;
+                    
+                    alert(message);
+                    document.getElementById('statusText').innerText = `👁️ Previewing: ${deviceName}`;
+                }
+                
+                function editDevice(subnet, deviceId, deviceName) {
+                    // Edit: Cihaz ayarlarını düzenleme popup'ı
+                    const newName = prompt(
+                        `Edit Device Settings\\n\\n` +
+                        `Current Name: ${deviceName}\\n\\n` +
+                        `Enter new name (or leave empty to keep current):`,
+                        deviceName
+                    );
+                    
+                    if (newName === null) {
+                        // User clicked cancel
+                        return;
+                    }
+                    
+                    if (newName && newName !== deviceName) {
+                        // TODO: Backend'de device name güncelleme API'si eklenebilir
+                        alert(`✏️ Edit functionality\\n\\nDevice name would be changed to: ${newName}\\n\\nThis feature requires backend API implementation.`);
+                        document.getElementById('statusText').innerText = `✏️ Edit requested for: ${deviceName}`;
+                    } else {
+                        alert('No changes made.');
                     }
                 }
                 

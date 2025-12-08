@@ -277,7 +277,7 @@ class TISUDPClient:
             
             # Send via UDP
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, self.broadcast, full_packet)
+            await loop.run_in_executor(None, self.send_broadcast, full_packet)
             
             _LOGGER.info(f"Control command sent: Subnet {subnet}, Device {device_id}, Channel {channel}, State {state}")
         except Exception as e:
