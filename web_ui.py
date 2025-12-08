@@ -29,6 +29,7 @@ class TISWebUI:
         self.app.router.add_post('/api/query_device', self.handle_query_device)
         self.app.router.add_post('/api/add_device', self.handle_add_device)
         self.app.router.add_post('/api/remove_device', self.handle_remove_device)
+        self.app.router.add_post('/api/fix_entity_types', self.handle_fix_entity_types)
         self.app.router.add_get('/api/debug/messages', self.handle_debug_messages)
         self.app.router.add_post('/api/debug/start', self.handle_debug_start)
         self.app.router.add_post('/api/debug/stop', self.handle_debug_stop)
@@ -346,7 +347,8 @@ class TISWebUI:
                 <div class="toolbar">
                     <button id="scanBtn" class="primary" onclick="try { scanDevices(); } catch(e) { alert('JavaScript Error: ' + e.message); console.error('Button click error:', e); }">🔍 Scan Network</button>
                     <button onclick="refreshTable()">🔄 Refresh</button>
-                    <button onclick="toggleDebug()">🔧 Debug Tool</button>
+                    <button onclick="fixEntityTypes()">🔧 Fix Entity Types</button>
+                    <button onclick="toggleDebug()">🐛 Debug Tool</button>
                 </div>
                 
                 <!-- Gateway Warning -->
@@ -673,6 +675,36 @@ class TISWebUI:
                         }
                     } catch (err) {
                         alert('❌ Error: ' + err.message);
+                    }
+                }
+                
+                async function fixEntityTypes() {
+                    if (!confirm('Fix entity types for all devices?\\n\\nThis will re-detect the correct entity type (switch/light/sensor/etc.) for each device based on its model name.\\n\\nHealthy sensors (TIS-HEALTH-*) will be changed from binary_sensor to sensor.')) {
+                        return;
+                    }
+                    
+                    try {
+                        document.getElementById('statusText').innerText = '🔄 Fixing entity types...';
+                        
+                        const response = await fetch('/api/fix_entity_types', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        
+                        const result = await response.json();
+                        if (result.success) {
+                            alert('✅ Entity types fixed!\\n\\n' + result.message);
+                            document.getElementById('statusText').innerText = '✅ Fixed ' + result.fixed_count + ' devices';
+                            await refreshTable();  // Refresh to show changes
+                        } else {
+                            alert('❌ Error: ' + result.message);
+                            document.getElementById('statusText').innerText = '❌ Error';
+                        }
+                    } catch (err) {
+                        alert('❌ Error: ' + err.message);
+                        document.getElementById('statusText').innerText = '❌ Error';
                     }
                 }
             </script>
@@ -1143,12 +1175,12 @@ class TISWebUI:
         if any(x in model for x in ['TIS-M', 'TIS-TM', 'CURTAIN', 'MOTOR', 'LFT-']):
             return 'cover'
         
-        # BINARY SENSOR - Motion sensors
-        if any(x in model for x in ['PIR', 'HEALTH-CM', 'HEALTH-SENSOR', 'OS-MMV2']):
+        # BINARY SENSOR - Motion/Occupancy sensors (digital state only)
+        if any(x in model for x in ['PIR', 'OS-MMV2']):
             return 'binary_sensor'
         
-        # SENSOR - Temperature/Humidity sensors
-        if any(x in model for x in ['4T-IN', 'ES-10F-CM', '4AI-', '4CH-AIN', 'WS-71']):
+        # SENSOR - Health, Temperature, Humidity, Energy sensors
+        if any(x in model for x in ['HEALTH-CM', 'HEALTH-SENSOR', '4T-IN', 'ES-10F-CM', '4AI-', '4CH-AIN', 'WS-71']):
             return 'sensor'
         
         # Default: Switch (relay)
@@ -1297,6 +1329,74 @@ class TISWebUI:
                 
         except Exception as e:
             _LOGGER.error(f"Remove device error: {e}", exc_info=True)
+            return web.json_response({'success': False, 'message': f'❌ Hata: {str(e)}'}, status=500)
+
+    async def handle_fix_entity_types(self, request):
+        """Fix entity_type for all devices by re-detecting from model names."""
+        try:
+            devices_file = '/config/tis_devices.json'
+            
+            # Load devices
+            try:
+                with open(devices_file, 'r') as f:
+                    devices = json.load(f)
+            except FileNotFoundError:
+                return web.json_response({'success': False, 'message': 'Cihaz dosyası bulunamadı'}, status=404)
+            
+            if not devices:
+                return web.json_response({'success': False, 'message': 'Kayıtlı cihaz yok'}, status=404)
+            
+            # Re-detect entity types
+            fixed_devices = []
+            unchanged_devices = []
+            
+            for device_id, device_data in devices.items():
+                model_name = device_data.get('model_name', '')
+                old_entity_type = device_data.get('entity_type', 'unknown')
+                
+                # Re-detect using current logic
+                new_entity_type = self._detect_entity_type(model_name)
+                
+                if old_entity_type != new_entity_type:
+                    device_data['entity_type'] = new_entity_type
+                    device_name = device_data.get('name', device_id)
+                    fixed_devices.append(f"{device_name}: {old_entity_type} → {new_entity_type}")
+                    _LOGGER.info(f"Fixed {device_id} ({model_name}): {old_entity_type} → {new_entity_type}")
+                else:
+                    unchanged_devices.append(device_data.get('name', device_id))
+            
+            # Save updated devices
+            with open(devices_file, 'w') as f:
+                json.dump(devices, f, indent=2, ensure_ascii=False)
+            
+            # Build response message
+            if fixed_devices:
+                message = f"✅ {len(fixed_devices)} cihaz düzeltildi:\n\n"
+                message += "\n".join(f"  • {d}" for d in fixed_devices[:10])  # Show max 10
+                if len(fixed_devices) > 10:
+                    message += f"\n  ... ve {len(fixed_devices) - 10} cihaz daha"
+                
+                if unchanged_devices:
+                    message += f"\n\n✓ {len(unchanged_devices)} cihaz zaten doğru"
+                
+                message += "\n\n🔄 TIS entegrasyonunu yenileyin:\nSettings → Integrations → TIS → ⋮ → Reload"
+                
+                # Try to reload automatically
+                reload_success = await self._reload_tis_integration()
+                if reload_success:
+                    message += "\n\n✅ Entegrasyon otomatik olarak yenilendi!"
+            else:
+                message = f"✓ Tüm {len(unchanged_devices)} cihaz zaten doğru entity_type'a sahip"
+            
+            return web.json_response({
+                'success': True,
+                'message': message,
+                'fixed_count': len(fixed_devices),
+                'unchanged_count': len(unchanged_devices)
+            })
+            
+        except Exception as e:
+            _LOGGER.error(f"Fix entity types error: {e}", exc_info=True)
             return web.json_response({'success': False, 'message': f'❌ Hata: {str(e)}'}, status=500)
     
     async def _reload_tis_integration(self):
