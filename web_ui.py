@@ -1039,11 +1039,15 @@ class TISWebUI:
             await response.write(data_line.encode())
         
         # Run discovery with callback
-        devices = await discovery.discover_with_callback(on_device_found)
+        try:
+            devices = await discovery.discover_with_callback(on_device_found)
+        except Exception as e:
+            _LOGGER.error(f"Discovery failed: {e}", exc_info=True)
+            devices = {}
         
         # Send completion event
         await response.write(b'event: complete\n')
-        complete_data = f'data: {{"count": {len(devices)}}}\\n\\n'
+        complete_data = f'data: {{"count": {len(devices)}}}\n\n'
         await response.write(complete_data.encode())
         
         return response

@@ -256,10 +256,14 @@ class TISDiscovery:
                                     discovered[unique_id] = device_info
                                     
                                     # Trigger callback immediately
-                                    asyncio.run_coroutine_threadsafe(
-                                        on_device_found(device_info), 
-                                        loop
-                                    )
+                                    try:
+                                        future = asyncio.run_coroutine_threadsafe(
+                                            on_device_found(device_info), 
+                                            loop
+                                        )
+                                        future.result(timeout=0.1)  # Wait briefly for callback
+                                    except Exception as e:
+                                        _LOGGER.error(f"Callback error for {unique_id}: {e}")
                                     
                         except socket.timeout:
                             continue
