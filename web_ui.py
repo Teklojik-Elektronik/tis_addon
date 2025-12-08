@@ -1749,8 +1749,6 @@ class TISWebUI:
 async def main():
     """Main function."""
     parser = argparse.ArgumentParser(description='TIS Web UI Server')
-    parser.add_argument('--gateway', default='192.168.1.200', help='TIS Gateway IP')
-    parser.add_argument('--port', type=int, default=6000, help='UDP Port')
     parser.add_argument('--log-level', default='info', choices=['debug', 'info', 'warning', 'error'], help='Log level')
     args = parser.parse_args()
     
@@ -1764,8 +1762,10 @@ async def main():
     logging.getLogger().setLevel(log_level_map[args.log_level])
     _LOGGER.setLevel(log_level_map[args.log_level])
     _LOGGER.info(f"Log level set to: {args.log_level.upper()}")
+    _LOGGER.info("TIS Addon - Uses TIS integration API for device discovery")
 
-    web_ui = TISWebUI(args.gateway, args.port)
+    # Gateway and port not needed - using integration API
+    web_ui = TISWebUI(gateway_ip='0.0.0.0', udp_port=6000)
     await web_ui.start()
     
     # Keep running

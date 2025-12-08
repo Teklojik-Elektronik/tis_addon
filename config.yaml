@@ -23,11 +23,7 @@ webui: "http://[HOST]:[PORT:8888]"
 startup: application
 boot: auto
 options:
-  gateway_ip: ""
-  udp_port: 6000
   log_level: "info"
 schema:
-  gateway_ip: str
-  udp_port: int
   log_level: list(debug|info|warning|error)
 url: "https://github.com/Teklojik-Elektronik/tis_addon"
