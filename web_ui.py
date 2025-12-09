@@ -1657,9 +1657,10 @@ class TISWebUI:
                     # Find TIS integration entry
                     tis_entry_id = None
                     for entry in entries:
-                        if entry.get('domain') == 'tis':
+                        # Check both 'tis' and 'tis_control' domains
+                        if entry.get('domain') in ['tis', 'tis_control']:
                             tis_entry_id = entry.get('entry_id')
-                            _LOGGER.info(f"Found TIS integration with entry_id: {tis_entry_id}")
+                            _LOGGER.info(f"Found TIS integration (domain: {entry.get('domain')}) with entry_id: {tis_entry_id}")
                             break
                     
                     if not tis_entry_id:
