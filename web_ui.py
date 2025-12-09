@@ -1425,18 +1425,42 @@ class TISWebUI:
 
             _LOGGER.info(f"Adding device: {subnet}.{device_id} - {device_name} ({channels} channels)")
             
+            # Get appliance counts from database if available
+            from const import DEVICE_APPLIANCE_COUNTS, DEFAULT_CHANNEL_NAMES
+            appliance_counts = DEVICE_APPLIANCE_COUNTS.get(model_name, {})
+            _LOGGER.info(f"Appliance counts for {model_name}: {appliance_counts}")
+            
             # Query channel names from device BEFORE saving
             channel_names = {}
             initial_states = {}
             
+            # Generate default channel names if we know the appliance structure
+            if appliance_counts:
+                channel_idx = 1
+                for appliance_type, count in appliance_counts.items():
+                    for i in range(count):
+                        # Get default name template for this appliance type
+                        default_names = DEFAULT_CHANNEL_NAMES.get(appliance_type, {})
+                        if len(default_names) == 1:
+                            # Single name type (e.g., switch, dimmer)
+                            channel_names[str(channel_idx)] = f"{default_names[1]} {i+1}"
+                        else:
+                            # Multi-name type (e.g., rgbw has 4 names)
+                            name_key = (i % len(default_names)) + 1
+                            channel_names[str(channel_idx)] = default_names.get(name_key, f"Channel {channel_idx}")
+                        channel_idx += 1
+                _LOGGER.info(f"Generated {len(channel_names)} default channel names from appliance counts")
+            
             if channels > 1:  # Only for multi-channel devices
                 try:
                     _LOGGER.info(f"Querying channel names for {subnet}.{device_id}...")
-                    channel_names = await self._query_channel_names(subnet, device_id, channels)
-                    _LOGGER.info(f"Received {len(channel_names)} channel names: {list(channel_names.keys())}")
+                    queried_names = await self._query_channel_names(subnet, device_id, channels)
+                    _LOGGER.info(f"Received {len(queried_names)} channel names: {list(queried_names.keys())}")
+                    # Override defaults with queried names if available
+                    channel_names.update(queried_names)
                 except Exception as e:
                     _LOGGER.error(f"Failed to query channel names: {e}", exc_info=True)
-                    # Continue without channel names
+                    # Continue with default channel names
                 
                 # Query initial states for all channels
                 try:
@@ -1465,7 +1489,8 @@ class TISWebUI:
                 'name': device_name or f"{model_name} ({subnet}.{device_id})",
                 'channel_names': channel_names,  # Add channel names to JSON
                 'initial_states': initial_states,  # Add initial states
-                'entity_type': entity_type  # NEW: Entity type for HA
+                'entity_type': entity_type,  # NEW: Entity type for HA
+                'appliance_counts': appliance_counts  # NEW: Detailed appliance breakdown
             }
             
             # Save to /config/tis_devices.json (TIS integration reads from here)

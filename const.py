@@ -675,3 +675,12 @@ def get_appliance_type(device_type_code):
     
     return APPLIANCE_TYPE_MAP.get(device_type_code, 'switch')  # Default to switch
 
+
+# Import appliance count mappings and channel defaults
+try:
+    from .appliance_counts import DEVICE_APPLIANCE_COUNTS
+    from .channel_defaults import DEFAULT_CHANNEL_NAMES
+except ImportError:
+    DEVICE_APPLIANCE_COUNTS = {}
+    DEFAULT_CHANNEL_NAMES = {}
+
