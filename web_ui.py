@@ -1452,7 +1452,8 @@ class TISWebUI:
             device_name = data.get('device_name')
             device_type = data.get('device_type')  # Get device_type int
 
-            _LOGGER.info(f"📥 Add device request: subnet={subnet}, device_id={device_id}, model={model_name}, channels={channels}, name={device_name}, type=0x{device_type:04X}")
+            device_type_hex = f"0x{device_type:04X}" if device_type else "None"
+            _LOGGER.info(f"📥 Add device request: subnet={subnet}, device_id={device_id}, model={model_name}, channels={channels}, name={device_name}, type={device_type_hex}")
 
             if not all([subnet, device_id, model_name]):
                 return web.json_response({'success': False, 'message': 'Eksik parametreler'}, status=400)
@@ -1513,7 +1514,9 @@ class TISWebUI:
             # Detect entity type from device_type_code (not model name!)
             from const import get_appliance_type
             entity_type = get_appliance_type(device_type) if device_type else self._detect_entity_type(model_name)
-            _LOGGER.info(f"Detected entity type: {entity_type} for device 0x{device_type:04X} ({model_name})")
+            
+            device_type_hex = f"0x{device_type:04X}" if device_type else "None"
+            _LOGGER.info(f"Detected entity type: {entity_type} for device {device_type_hex} ({model_name})")
             
             device_info = {
                 'subnet': subnet,
