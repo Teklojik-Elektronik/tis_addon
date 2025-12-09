@@ -1378,8 +1378,27 @@ class TISWebUI:
             return f"<span style='color:#f44336;'>Data decode hatası: {e}</span><br>"
     
     def _detect_entity_type(self, model_name: str) -> str:
-        """Detect Home Assistant entity type from device model name."""
+        """Detect Home Assistant entity type from device model name.
+        
+        Uses appliance_counts database to determine primary entity type.
+        Falls back to model name pattern matching if not in database.
+        """
+        from const import DEVICE_APPLIANCE_COUNTS
+        
+        # Priority 1: Use appliance_counts database
+        appliance_counts = DEVICE_APPLIANCE_COUNTS.get(model_name, {})
+        if appliance_counts:
+            # Return the first (most common) appliance type
+            first_type = next(iter(appliance_counts.keys()))
+            _LOGGER.info(f"Detected entity type from database: {first_type} for {model_name}")
+            return first_type
+        
+        # Priority 2: Pattern matching fallback
         model = model_name.upper()
+        
+        # HEALTH SENSOR - Must check before generic SENSOR
+        if 'HEALTH' in model:
+            return 'health_sensor'
         
         # LIGHT - Dimmer devices
         if any(x in model for x in ['DIM-', 'VLC-', 'DALI-']):
@@ -1400,11 +1419,16 @@ class TISWebUI:
         if any(x in model for x in ['PIR', 'OS-MMV2']):
             return 'binary_sensor'
         
-        # SENSOR - Health, Temperature, Humidity, Energy sensors
-        if any(x in model for x in ['HEALTH-CM', 'HEALTH-SENSOR', '4T-IN', 'ES-10F-CM', '4AI-', '4CH-AIN', 'WS-71']):
+        # SENSOR - Temperature, Humidity, Energy sensors
+        if any(x in model for x in ['4T-IN', 'ES-10F-CM', '4AI-', '4CH-AIN', 'WS-71']):
             return 'sensor'
         
+        # Digital Input - Binary sensors
+        if 'DI-' in model or 'INPUT' in model:
+            return 'binary_sensor'
+        
         # Default: Switch (relay)
+        _LOGGER.warning(f"No specific entity type found for {model_name}, defaulting to 'switch'")
         return 'switch'
 
     async def handle_add_device(self, request):
