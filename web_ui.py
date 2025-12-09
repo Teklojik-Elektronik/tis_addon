@@ -1380,20 +1380,30 @@ class TISWebUI:
     def _detect_entity_type(self, model_name: str) -> str:
         """Detect Home Assistant entity type from device model name.
         
-        Uses appliance_counts database to determine primary entity type.
+        Uses appliance_counts database and device_mappings to determine entity type.
         Falls back to model name pattern matching if not in database.
         """
-        from const import DEVICE_APPLIANCE_COUNTS
+        from const import DEVICE_APPLIANCE_COUNTS, APPLIANCE_TYPE_MAP, TIS_DEVICE_TYPES
         
-        # Priority 1: Use appliance_counts database
+        # Priority 1: Use appliance_counts database (for standard devices)
         appliance_counts = DEVICE_APPLIANCE_COUNTS.get(model_name, {})
         if appliance_counts:
             # Return the first (most common) appliance type
             first_type = next(iter(appliance_counts.keys()))
-            _LOGGER.info(f"Detected entity type from database: {first_type} for {model_name}")
+            _LOGGER.info(f"Detected entity type from appliance_counts: {first_type} for {model_name}")
             return first_type
         
-        # Priority 2: Pattern matching fallback
+        # Priority 2: Use APPLIANCE_TYPE_MAP (for special devices like health_sensor, universal_switch)
+        # Find device_type_code from TIS_DEVICE_TYPES
+        for device_type_code, (name, channels) in TIS_DEVICE_TYPES.items():
+            if name == model_name:
+                appliance_type = APPLIANCE_TYPE_MAP.get(device_type_code)
+                if appliance_type:
+                    _LOGGER.info(f"Detected entity type from APPLIANCE_TYPE_MAP: {appliance_type} for {model_name}")
+                    return appliance_type
+                break
+        
+        # Priority 3: Pattern matching fallback
         model = model_name.upper()
         
         # HEALTH SENSOR - Must check before generic SENSOR
