@@ -473,3 +473,205 @@ TIS_DEVICE_DESCRIPTIONS = {
 def get_device_description(model_name):
     """Get device description from model name."""
     return TIS_DEVICE_DESCRIPTIONS.get(model_name, model_name)
+
+
+# Appliance Type Mappings for Home Assistant Entity Platform Detection
+# Maps device_type_code to appliance_type string used in TIS integration
+# Format: (byte1, byte2): "appliance_type"
+APPLIANCE_TYPE_MAP = {
+    # Dimmers -> "dimmer"
+    (0x00, 0x20): "dimmer",  # TIS-DMX-48
+    (0x02, 0x58): "dimmer",  # DIM-6CH-2A
+    (0x02, 0x59): "dimmer",  # DIM-4CH-3A
+    (0x02, 0x5A): "dimmer",  # DIM-2CH-6A
+    (0x01, 0xAA): "dimmer",  # VLC-6CH-3A
+    (0x01, 0xB8): "dimmer",  # VLC-12CH-10A
+    (0x1B, 0xA8): "dimmer",  # DALI-64
+    (0x1B, 0xB2): "dimmer",  # TIS-DIM-4CH-1A
+    (0x1B, 0xB4): "dimmer",  # DIM-TE-2CH-3A
+    (0x1B, 0xB6): "dimmer",  # DIM-TE-4CH-1.5A
+    (0x1B, 0xBB): "dimmer",  # RLY-6CH-0-10V
+    (0x80, 0x2E): "dimmer",  # ACM-1D-2Z
+    (0x80, 0x30): "dimmer",  # DIM-W06CH10A-TE
+    (0x80, 0x31): "dimmer",  # DIM-W12CH10A-TE
+    (0x80, 0x40): "dimmer",  # ADS-1D-1Z
+    (0x80, 0x52): "dimmer",  # VEN-1D-UV
+    (0x80, 0x4E): "rgbw",     # ADS-4CH-0-10V (RGBW)
+    (0x81, 0x20): "dimmer",  # DIM-TE-8CH-1A
+    
+    # HVAC/Climate -> "ac"
+    (0x00, 0x77): "ac",      # HVAC6-3A-T
+    (0x80, 0x14): "ac",      # IO-AC-4G
+    (0x80, 0x27): "ac",      # VEN-AC-3R-HC-BUS
+    (0x80, 0x28): "ac",      # VEN-AC-4R-HC-BUS
+    (0x80, 0x29): "ac",      # VEN-AC-5R-LC-BUS
+    (0x80, 0x44): "ac",      # VEN-AC-5R-LC
+    (0x80, 0x45): "ac",      # VEN-AC-4R-HC
+    (0x80, 0x4D): "ac",      # VEN-AC-3R-HC
+    (0x80, 0x81): "ac",      # VEN-AC-3R-1.5-OLED-BUS
+    (0x80, 0x82): "ac",      # VEN-AC-4R-1.5-OLED-BUS
+    (0x80, 0x83): "ac",      # VEN-AC-5R-1.5-OLED-BUS
+    (0x80, 0x85): "ac",      # VEN-AC-3R-1.5-OLED
+    (0x80, 0x86): "ac",      # VEN-AC-4R-1.5-OLED
+    (0x80, 0x87): "ac",      # VEN-AC-5R-1.5-OLED
+    (0x80, 0x89): "ac",      # TIS-VRV-PRO
+    (0x80, 0x6C): "ac",      # TIS-MER-AC4G-PB
+    (0x80, 0x99): "ac",      # TIS-GTY-1AC
+    (0x80, 0xA8): "ac",      # TIS-CLICK-AC-BUS
+    (0x80, 0xB7): "floor_heating",  # TIS-CLICK-AC-FH-BUS
+    (0x1B, 0x9E): "ac",      # MRS-AC10G
+    
+    # Motors/Curtains -> "motor" or "shutter"
+    (0x80, 0x10): "motor",   # TIS-M3-MOTOR
+    (0x80, 0x55): "motor",   # PRJ-LFT-15K-130
+    (0x80, 0x7C): "shutter", # TIS-M7-CURTAIN
+    (0x81, 0x10): "shutter", # TIS-TM-120
+    
+    # Binary Sensors (PIR, Motion) -> "binary_sensor"
+    (0x00, 0x85): "binary_sensor",  # TIS-PIR-CM
+    (0x80, 0x37): "binary_sensor",  # BUS-PIR-CM
+    (0x80, 0x42): "binary_sensor",  # AIR-PIR-CM
+    (0x80, 0xB0): "binary_sensor",  # TIS-RADAR-SENSOR
+    
+    # Sensors -> "health_sensor", "temperature_sensor", "energy_sensor", "analog_sensor"
+    (0x80, 0x22): "health_sensor",   # TIS-HEALTH-CM
+    (0x80, 0xAE): "health_sensor",   # TIS-HEALTH-CM-RADAR
+    (0x80, 0x2F): "temperature_sensor",  # TIS-4T-IN
+    (0x01, 0x35): "energy_sensor",   # ES-10F-CM
+    (0x80, 0x38): "energy_sensor",   # BUS-ES-IR
+    (0x80, 0x3F): "energy_sensor",   # AIR-ES-IR
+    (0x80, 0x60): "energy_sensor",   # MET-EN-1PH
+    (0x80, 0x57): "analog_sensor",   # TIS-WS-71
+    (0x80, 0x91): "analog_sensor",   # TIS-4CH-AIN
+    (0x80, 0xAB): "analog_sensor",   # TIS-4AI-010V
+    (0x80, 0xAC): "analog_sensor",   # TIS-4AI-4-20MA
+    
+    # Security -> "security"
+    (0x0B, 0xE9): "security",  # TIS-SEC-SM
+    (0x80, 0xA7): "security",  # TIS-SEC-PRO
+    
+    # Universal Switches (Panel buttons) -> "universal_switch"
+    (0x1B, 0x96): "universal_switch",  # LUNA-9GANGS
+    (0x23, 0x32): "universal_switch",  # LUNA-TFT-43
+    (0x23, 0xFA): "universal_switch",  # LUNA-BEDSIDE
+    (0x80, 0x13): "universal_switch",  # IO-8G
+    (0x80, 0x15): "universal_switch",  # VEN-6S-BUS
+    (0x80, 0x17): "universal_switch",  # TIT-2G-BUS
+    (0x80, 0x18): "universal_switch",  # TIT-3G-BUS
+    (0x80, 0x19): "universal_switch",  # TIT-4G-BUS
+    (0x80, 0x1A): "universal_switch",  # TARIQ-8G6R5Z
+    (0x80, 0x1B): "universal_switch",  # TARIQ-8G3R5Z1F
+    (0x80, 0x1C): "universal_switch",  # TARIQ-8G3R5Z2D
+    (0x80, 0x24): "universal_switch",  # VEN-2S-BUS
+    (0x80, 0x25): "universal_switch",  # VEN-3S-BUS
+    (0x80, 0x26): "universal_switch",  # VEN-4S-BUS
+    (0x80, 0x2C): "universal_switch",  # TIT-TFT-BUS
+    (0x80, 0x43): "universal_switch",  # VEN-4S-4R-HC
+    (0x80, 0x4C): "universal_switch",  # VEN-2S-2R-HC
+    (0x80, 0x53): "universal_switch",  # VEN-3S-3R-HC
+    (0x80, 0x64): "universal_switch",  # LUNA-IN-HOTEL-HRF
+    (0x80, 0x65): "universal_switch",  # LUNA-IN-HOTEL-3T3L-HRF
+    (0x80, 0x66): "universal_switch",  # IO-IN-HOTEL-HRF
+    (0x80, 0x67): "universal_switch",  # LUNA-OUT-HOTEL-HRF
+    (0x80, 0x68): "universal_switch",  # LUNA-OUT-HOTEL
+    (0x80, 0x69): "universal_switch",  # IO-OUT-HOTEL-HRF
+    (0x80, 0x6A): "universal_switch",  # IO-OUT-HOTEL
+    (0x80, 0x6B): "universal_switch",  # TIS-MER-8G-PB
+    (0x80, 0x6D): "universal_switch",  # IO-IN-HOTEL-LRF
+    (0x80, 0x6E): "universal_switch",  # IO-OUT-HOTEL-LRF
+    (0x80, 0x6F): "universal_switch",  # LUNA-IN-HOTEL-LRF
+    (0x80, 0x70): "universal_switch",  # LUNA-OUT-HOTEL-LRF
+    (0x80, 0x71): "universal_switch",  # LUNA-IN-HOTEL-3T3L-LRF
+    (0x80, 0x7E): "universal_switch",  # VEN-2G-HC-BUS-B
+    (0x80, 0x7F): "universal_switch",  # VEN-3G-HC-BUS-B
+    (0x80, 0x80): "universal_switch",  # VEN-4G-HC-BUS-B
+    (0x80, 0x8B): "universal_switch",  # VEN-2G-HC-AIR-A
+    (0x80, 0x8C): "universal_switch",  # VEN-3G-HC-AIR-A
+    (0x80, 0x8D): "universal_switch",  # VEN-4G-HC-AIR-A
+    (0x80, 0x8F): "universal_switch",  # TIS-BEDSIDE-12G
+    (0x80, 0x93): "universal_switch",  # TIS-SOL-3G
+    (0x80, 0x94): "universal_switch",  # MER-IN-HOTEL-LRF
+    (0x80, 0x95): "universal_switch",  # TER-2G
+    (0x80, 0x96): "universal_switch",  # TIS-SOL-TFT
+    (0x80, 0x98): "universal_switch",  # MER-OUT-HOTEL-LRF
+    (0x80, 0x9A): "universal_switch",  # IO-OUT-HOTEL-HRF-809A
+    (0x80, 0x9B): "universal_switch",  # IO-OUT-HOTEL-809B
+    (0x80, 0x9C): "universal_switch",  # LUNA-OUT-HOTEL-HRF-809C
+    (0x80, 0x9D): "universal_switch",  # LUNA-OUT-HOTEL-809D
+    (0x80, 0x9E): "universal_switch",  # IO-IN-HOTEL-HRF-809E
+    (0x80, 0xA1): "universal_switch",  # CLICK-1G-PANEL-BUS
+    (0x80, 0xA2): "universal_switch",  # CLICK-2G-PANEL-BUS
+    (0x80, 0xA3): "universal_switch",  # CLICK-4G-PANEL-BUS
+    (0x80, 0xA6): "universal_switch",  # CLICK-6G-PANEL-BUS
+    (0x80, 0xAA): "universal_switch",  # MER-IN-HOTEL-HRF-0x80AA
+    (0x80, 0xAD): "universal_switch",  # MER-OUT-HOTEL-HRF-0x80AD
+    (0x80, 0xB1): "universal_switch",  # TIS-ERO-1G
+    (0x80, 0xB2): "universal_switch",  # TIS-ERO-2G
+    (0x80, 0xB3): "universal_switch",  # TIS-ERO-3G
+    (0x80, 0xB4): "universal_switch",  # TIS-ERO-4G
+    (0x80, 0xB6): "universal_switch",  # TIS-ERO-6G
+    (0x80, 0xC4): "universal_switch",  # TIS-SIR-4G
+    (0x80, 0xC6): "universal_switch",  # TIS-SIR-6G
+    (0x80, 0xC8): "universal_switch",  # TIS-SIR-8G
+    (0x17, 0x70): "universal_switch",  # TER-4G
+    (0x17, 0x7A): "universal_switch",  # TER-ACT
+    (0x17, 0x84): "universal_switch",  # TER-AUD
+    (0x1B, 0x80): "universal_switch",  # MRS-4G
+    (0x1B, 0x8A): "universal_switch",  # MRS-8G
+    (0x1B, 0x94): "universal_switch",  # MRS-12G
+    
+    # Switches (Relays, Digital I/O) -> "switch"
+    (0x00, 0x76): "switch",  # TIS-4DI-IN
+    (0x01, 0x32): "switch",  # TIS-IR-CUR
+    (0x01, 0xA8): "switch",  # RLY-4CH-10A
+    (0x01, 0xAC): "switch",  # RLY-8CH-16A
+    (0x04, 0x54): "switch",  # TIS-AUT-TMR
+    (0x04, 0xB1): "switch",  # IP-COM-PORT-OLD
+    (0x24, 0x5E): "switch",  # LUNA-BELL-3S
+    (0x80, 0x3B): "switch",  # ADS-3R-BUS
+    (0x80, 0x3C): "switch",  # ACM-3Z-IN
+    (0x80, 0x3D): "switch",  # AIR-AUTO-IRE-T
+    (0x80, 0x3E): "switch",  # BUS-AUTO-IRE-T
+    (0x80, 0x41): "switch",  # ADS-2R-2Z
+    (0x80, 0x46): "switch",  # AIR-1IRE-T
+    (0x80, 0x48): "switch",  # AIR-2IRE
+    (0x80, 0x4B): "switch",  # ACM-2R-2Z
+    (0x80, 0x4F): "switch",  # ADS-3R-3Z
+    (0x80, 0x50): "switch",  # AMP-5S1Z-MTX
+    (0x80, 0x51): "switch",  # AIR-SOCKET-S
+    (0x80, 0x54): "switch",  # TIS-AIR-BUS
+    (0x80, 0x58): "switch",  # IP-COM-PORT
+    (0x80, 0x61): "switch",  # TIS-KNX-PORT
+    (0x80, 0x62): "switch",  # TIS-TRV-16CNV
+    (0x80, 0x7A): "switch",  # TIS-ZIG-PORT
+    (0x80, 0x7B): "switch",  # TIS-AUD-SRV-4X-160W
+    (0x80, 0x90): "switch",  # TIS-BUS-CONVERTER
+    (0x80, 0x92): "switch",  # TIS-OUTDOOR-BELL
+    (0x80, 0xA9): "switch",  # TIS-22DI-DIN
+    (0x80, 0xAF): "switch",  # TIS-ZB-GATEWAY
+    (0x80, 0xB8): "switch",  # TIS-C-BUS-CONVERTER
+    (0x80, 0xB9): "switch",  # TIS-FAN-4CH
+    (0x1B, 0xBA): "switch",  # RCU-8OUT-8IN
+    (0x80, 0x2B): "switch",  # RCU-24R20Z
+    (0x80, 0x2D): "switch",  # RCU-20R20Z-IP
+    (0x80, 0x36): "switch",  # MINI-AIR-AUTO-IRE-T
+}
+
+
+def get_appliance_type(device_type_code):
+    """Get Home Assistant appliance type from device type code.
+    
+    Args:
+        device_type_code: Tuple of (byte1, byte2) or integer
+        
+    Returns:
+        str: Appliance type for Home Assistant (e.g., 'switch', 'dimmer', 'ac')
+    """
+    if isinstance(device_type_code, int):
+        # Convert integer to tuple
+        byte1 = (device_type_code >> 8) & 0xFF
+        byte2 = device_type_code & 0xFF
+        device_type_code = (byte1, byte2)
+    
+    return APPLIANCE_TYPE_MAP.get(device_type_code, 'switch')  # Default to switch
+
